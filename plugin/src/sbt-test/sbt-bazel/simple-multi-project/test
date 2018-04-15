@@ -1,0 +1,8 @@
+> A/bazelGenerate
+$ exists A/BUILD
+> B1/bazelGenerate
+$ exists B1/BUILD
+> B2/bazelGenerate
+$ exists B2/BUILD
+> C/bazelGenerate
+$ exists C/BUILD
