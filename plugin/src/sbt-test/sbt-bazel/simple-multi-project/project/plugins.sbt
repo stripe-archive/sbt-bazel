@@ -1,1 +1,1 @@
-addSbtPlugin("io.higherkindness" % "sbt-bazel" % sys.props.apply("plugin.version"))
+addSbtPlugin("com.stripe" % "sbt-bazel" % sys.props.apply("plugin.version"))
