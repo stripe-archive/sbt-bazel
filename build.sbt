@@ -9,18 +9,6 @@ lazy val commonSettings = Seq(
   version      := "0.0.1-SNAPSHOT"
 )
 
-lazy val skylurk = project
-  .in(file("skylurk"))
-  .settings(commonSettings)
-  .settings(name := "skylurk")
-  .settings(libraryDependencies ++= Seq(
-    deps.cats,
-    deps.catsEffect,
-    deps.paiges,
-    deps.scalacheck % Test
-  ))
-
-
 lazy val plugin = project
   .in(file("plugin"))
   .enablePlugins(ScriptedPlugin)
@@ -29,8 +17,7 @@ lazy val plugin = project
     ScriptedKeys.scriptedLaunchOpts := {
       ScriptedKeys.scriptedLaunchOpts.value ++
       Seq("-Xmx1024M", "-Dplugin.version=" + Keys.version.value)
-    },
-    publishLocal := publishLocal.dependsOn(publishLocal in skylurk).value)
+    })
   .settings(commonSettings)
   .settings(name := "sbt-bazel")
   .settings(sbtPlugin := true)
