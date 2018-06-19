@@ -1,4 +1,4 @@
-language: scala
+language: nix
 jdk:
   - oraclejdk8
 
@@ -7,7 +7,7 @@ stages:
 
 jobs:
   include:
-    - script: sbt ";test;scripted"
+    - script: nix-shell --command 'sbt ";test;scripted"'
 
 cache:
   directories:
