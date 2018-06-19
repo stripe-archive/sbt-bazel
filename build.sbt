@@ -4,7 +4,7 @@ lazy val root = (project in file("."))
   .aggregate(plugin)
 
 lazy val commonSettings = Seq(
-  organization := "io.higherkindness",
+  organization := "com.stripe",
   scalaVersion := "2.12.4",
   version      := "0.0.1-SNAPSHOT"
 )

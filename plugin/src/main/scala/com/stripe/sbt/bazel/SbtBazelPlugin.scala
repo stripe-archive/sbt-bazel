@@ -1,4 +1,4 @@
-package io.higherkindness
+package com.stripe.sbt.bazel
 
 import sbt._
 
