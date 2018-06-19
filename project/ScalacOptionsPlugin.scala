@@ -1,17 +1,37 @@
-package build.iota
+package build
 
 import sbt._
 import sbt.Keys._
 
+import scala.util.Try
+
+// Note: copied almost verbatim from
+// https://github.com/frees-io/iota/blob/master/project/ScalacOptionsPlugin.scala
+
 object ScalacOptionsPlugin extends AutoPlugin {
+  override def trigger: PluginTrigger = allRequirements
 
   lazy val scalac211Options = taskKey[Seq[String]]("Options for the Scala 2.11 compiler.")
   lazy val scalac212Options = taskKey[Seq[String]]("Options for the Scala 2.12 compiler.")
 
+  object autoImport {
+    lazy val scalacFatalWarnings = taskKey[Boolean]("Enable/disable fatal warnings for the Scala compiler")
+  }
+
+  import autoImport._
+
   override def projectSettings: Seq[Def.Setting[_]] = Seq(
 
     scalac211Options := defaultScalac211Options,
-    scalac212Options := defaultScalac212Options,
+    scalac212Options :=
+      defaultScalac212Options ++ (
+        if (scalacFatalWarnings.value) Some("-Xfatal-warnings") else None),
+
+    scalacFatalWarnings := {
+      sys.env.get("SCALAC_FATAL_WARNINGS")
+        .flatMap(v => Try(v.toBoolean).toOption)
+        .getOrElse(false)
+    },
 
     scalacOptions   ++= (CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, 12)) => scalac212Options.value
@@ -35,7 +55,6 @@ object ScalacOptionsPlugin extends AutoPlugin {
     "-language:implicitConversions",     // Allow definition of implicit functions called views
     "-unchecked",                        // Enable additional warnings where generated code depends on assumptions.
     "-Xcheckinit",                       // Wrap field accessors to throw an exception on uninitialized access.
-    "-Xfatal-warnings",                  // Fail the compilation if there are any warnings.
     "-Xfuture",                          // Turn on future language features.
     "-Xlint:adapted-args",               // Warn if an argument list is modified to match the receiver.
     "-Xlint:by-name-right-associative",  // By-name parameter of right associative operator.
@@ -70,7 +89,7 @@ object ScalacOptionsPlugin extends AutoPlugin {
     "-Ywarn-unused:patvars",             // Warn if a variable bound in a pattern is unused.
     "-Ywarn-unused:privates",            // Warn if a private member is unused.
     "-Ywarn-value-discard",              // Warn when non-Unit expression results are unused.
-    "-Yno-predef")
+  )
 
   private[this] def defaultScalac211Options: List[String] = List(
     "-encoding", "UTF-8",
@@ -78,8 +97,8 @@ object ScalacOptionsPlugin extends AutoPlugin {
     "-language:existentials",
     "-language:higherKinds",
     "-language:implicitConversions",
-    "-Ypartial-unification",
-    "-Yno-predef")
+    "-Ypartial-unification"
+  )
 
   private[this] def scalacOptionsConsoleFilter: Set[String] = Set(
     "-Ywarn-unused:imports",
