@@ -64,7 +64,8 @@ object SbtBazel {
   def render(ri: RuleInvocation): Doc = {
 
     def arr(entries: List[Doc]): Doc =
-      join(entries).tightBracketBy(Doc.char('['), Doc.char(']'))
+      if (entries.isEmpty) Doc.text("[]")
+      else join(entries).tightBracketBy(Doc.char('['), Doc.char(']'))
 
     val deps = arr(
       ri.projectDeps.map(l => str(s":$l")))
@@ -101,10 +102,10 @@ object SbtBazel {
       sources = Nil)
 
     val rendered: String =
-      render(ri).render(80)
-    logger.info(">> " + rendered)
+      render(ri).renderTrim(0)
+    logger.info(s"BUILD:\n$rendered")
 
-    val contents = "rendered"
+    val contents = rendered
     Files.write(buildFile.toPath, contents.getBytes(DefaultCharset))
 
     buildFile

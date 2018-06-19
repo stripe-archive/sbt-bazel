@@ -1,0 +1,2 @@
+> bazelGenerate
+$ must-mirror BUILD BUILD.expect
