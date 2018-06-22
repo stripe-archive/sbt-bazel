@@ -1,4 +1,5 @@
 scala_library(
-  name = 'trivial',
+  name = 'root',
   deps = [],
+  visibility = '//visibility:public',
 )

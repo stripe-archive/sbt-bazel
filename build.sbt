@@ -8,6 +8,7 @@ lazy val commonSettings = Seq(
   scalaVersion := "2.12.4",
   version      := "0.0.1-SNAPSHOT"
 )
+val circeVersion = "0.9.3"
 
 lazy val plugin = project
   .in(file("plugin"))
@@ -16,7 +17,7 @@ lazy val plugin = project
     ScriptedKeys.scriptedBufferLog := false,
     ScriptedKeys.scriptedLaunchOpts := {
       ScriptedKeys.scriptedLaunchOpts.value ++
-      Seq("-Xmx1024M", "-Dplugin.version=" + Keys.version.value)
+      Seq("-Xmx2048M", "-Dplugin.version=" + Keys.version.value)
     })
   .settings(commonSettings)
   .settings(name := "sbt-bazel")
@@ -25,7 +26,11 @@ lazy val plugin = project
     deps.cats,
     deps.catsEffect,
     deps.paiges,
-    deps.scalacheck % Test
+    deps.scalacheck % Test,
+    "io.circe" %% "circe-yaml" % "0.6.1",
+    "io.circe" %% "circe-core" % circeVersion,
+    "io.circe" %% "circe-generic" % circeVersion,
+    "io.circe" %% "circe-parser" % circeVersion
   ))
 
 lazy val deps = new {

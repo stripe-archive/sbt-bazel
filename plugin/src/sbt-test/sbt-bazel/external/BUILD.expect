@@ -1,0 +1,7 @@
+scala_library(
+  name = 'hello',
+  deps = [
+    '//3rdparty/jvm/com/eed3si9n/gigahorse-okhttp',
+  ],
+  visibility = '//visibility:public',
+)
