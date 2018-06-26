@@ -1,14 +1,10 @@
 package com.stripe.sbt.bazel
 
-import _root_.io.circe._
 import sbt._
-
-// Rename sbt.io so it doesn't conflict with io.circe
-//import sbt._
+import com.stripe.sbt.bazel.BazelAst._
 import java.nio.charset.Charset
 import java.nio.file.Files
 import java.io.{File => JFile}
-
 
 object SbtBazelPlugin extends AutoPlugin {
 
@@ -18,65 +14,37 @@ object SbtBazelPlugin extends AutoPlugin {
 
   override def trigger = allRequirements
 
-  def autoImport = SbtBazelkeys
+  lazy val autoImport = SbtBazelKeys
 
-  override def projectSettings: Seq[Def.Setting[_]] = {
-    val settings = List(
-      SbtBazelkeys.bazelGenerate := SbtBazel.bazelGenerate.value
-    )
+  import SbtBazelKeys._
 
-    settings.flatMap(ss => sbt.inConfig(Compile)(ss) ++ sbt.inConfig(Test)(ss))
-  }
+  lazy val baseSettings: Seq[Def.Setting[_]] = Seq(
+    bazelGenerate := Def.taskDyn {
+      if (!bazelSkip.value) {
+        SbtBazel.bazelGenerateMain
+      } else {
+        Def.task[Option[File]](None)
+      }
+    }.value,
+    bazelSkip := false,
+    bazelMavenRepo := None,
+    bazelWorkspaceGenerateFlag := false,
+    bazelWorkspaceGenerate := SbtBazel.bazelWorkspaceGenerateMain.value
+  )
+
+  override def projectSettings: Seq[Def.Setting[_]] = baseSettings
 }
 
-object SbtBazelkeys {
-  val bazelGenerate: sbt.TaskKey[File] =
-    sbt.taskKey[File]("Generate a Bazel build file for this project")
-}
+object SbtBazelKeys {
+  val bazelGenerate = sbt.taskKey[Option[File]]("Generate a Bazel build file for this project")
 
-final case class ScalaLibrary(
-  name: String,
-  projectDeps: List[String],
-  binaryDeps: List[String],
-  sources: List[Source],
-  visibility: Visibility
-)
+  val bazelWorkspaceGenerate = sbt.taskKey[File]("Generate a Bazel WORKSPACE file")
 
-final case class ScalaBinary(
-  name: String,
-  projectDeps: List[String],
-  mainClass: String
-)
+  val bazelSkip = sbt.settingKey[Boolean]("Skip bazel BUILD generation for this project")
 
-final case class Dependencies(
-  ds: Map[String, Dependency] // org -> Dep
-)
+  val bazelMavenRepo = sbt.settingKey[Option[String]]("URI of maven repository")
 
-final case class Dependency(
-  packages: Map[String, PackageProps] // package name -> Package
-)
-
-final case class PackageProps(
-  version: String,
-  modules: List[String],
-  exports: List[String],
-  lang: String
-)
-
-sealed trait Visibility
-
-object Public extends Visibility
-
-object Private extends Visibility
-
-sealed trait Source
-
-object Source {
-
-  final case class Path(value: String) extends Source
-
-  final case class Glob(sources: List[Source]) extends Source
-
+  val bazelWorkspaceGenerateFlag = sbt.settingKey[Boolean]("Generate a WORKSPACE file for this project and child projects.")
 }
 
 object SbtBazel {
@@ -85,31 +53,16 @@ object SbtBazel {
 
   private final val DefaultCharset = Charset.defaultCharset
 
-  val WorkspacePrelude =
-    """
-      |rules_scala_version="63eab9f4d80612e918ba954211f377cc83d27a07"
-      |
-      |http_archive(
-      |	name = "io_bazel_rules_scala",
-      |	url = "https://github.com/bazelbuild/rules_scala/archive/%s.zip"%rules_scala_version,
-      |	type = "zip",
-      |	strip_prefix = "rules_scala-%s" % rules_scala_version
-      |	)
-      |
-      |load("@io_bazel_rules_scala//scala:scala.bzl", "scala_repositories")
-      |scala_repositories()
-      |
-      |load("@io_bazel_rules_scala//scala:toolchains.bzl", "scala_register_toolchains")
-      |scala_register_toolchains()
-    """.stripMargin
-
-  val BuildPredule = """load("@io_bazel_rules_scala//scala:scala.bzl", "scala_binary", "scala_library", "scala_test")"""
-
   private def nameFromString(name: String, configuration: Configuration): String =
     if (configuration == Compile) name else name + "-test"
 
-  private def nameFromRef(ref: ProjectRef, configuration: Configuration): String =
-    nameFromString(ref.project, configuration)
+  private def nameFromRef(
+    ref: ProjectReference,
+    projectBase: String
+  ) = {
+    val target = s"//$projectBase:${ref.project}"
+    target
+  }
 
   private def nameFromLibDep(dep: ModuleID): String =
     s"${dep.organization.replace(".", "/")}/${dep.name}"
@@ -142,24 +95,6 @@ object SbtBazel {
     }
   }
 
-  def dependencies(ds: Dependencies): Json = {
-    Json.fromFields(List("dependencies" -> Json.fromFields(ds.ds.mapValues(dependency))))
-  }
-
-  def dependency(d: Dependency): Json = {
-    Json.fromFields(d.packages.mapValues(packageProps).toList)
-  }
-
-  def packageProps(p: PackageProps): Json = {
-    Json.fromFields(List(
-      "version" -> Json.fromString(p.version),
-      "modules" -> Json.fromValues(p.modules.map(Json.fromString)),
-      "exports" -> Json.fromValues(p.exports.map(Json.fromString)),
-      "lang" -> Json.fromString(p.lang)
-    )
-    )
-  }
-
   def source(s: Source): Doc = {
     s match {
       case Source.Path(p) => str(p)
@@ -170,7 +105,7 @@ object SbtBazel {
 
   def scalaLibraryRender(ri: ScalaLibrary): Doc = {
     val deps = arr(
-      ri.projectDeps.map(dep => str(s":$dep")) ++
+      ri.projectDeps.map(dep => str(dep)) ++
         ri.binaryDeps.map(dep => str(dep))
     )
 
@@ -205,29 +140,29 @@ object SbtBazel {
   def normalizeBindName(module: ModuleID): String =
     s"jar/${replaceWithSlash(module.organization)}/${replaceWithUnderscore(module.name)}_${replaceWithUnderscore(module.revision)}"
 
-  def mavenJar(module: Attributed[File]): Doc = {
+  def mavenJar(module: Attributed[File], repo: String): List[PyExpr] = {
     val Some(moduleId) = module.metadata.get(Keys.moduleID.key)
 
     val jarName = normalizeJarName(moduleId)
     val bindName = normalizeBindName(moduleId)
     val mvnCoords = mavenCoordinates(moduleId)
 
-    val mvnJar = pyCall(
-      Doc.text("maven_jar"),
+    val jar = PyCall("maven_jar",
       List(
-        Doc.text("name") -> str(s"$jarName"),
-        Doc.text("artifact") -> str(s"$mvnCoords"),
-        Doc.text("repository") -> str("https://nexus-content.northwest.corp.stripe.com:446/groups/public")
+        "name" -> PyStr(s"$jarName"),
+        "artifact" -> PyStr(s"$mvnCoords"),
+        "repository" -> PyStr(repo)
       )
     )
 
-    val bind = pyCall(Doc.text("bind"), List(
-      Doc.text("name") -> str(s"$bindName"),
-      Doc.text("actual") -> str(s"@$jarName//jar:file")
-    )
+    val bind = PyCall("bind",
+      List(
+        "name" -> PyStr(s"$bindName"),
+        "actual" -> PyStr(s"@$jarName//jar:file")
+      )
     )
 
-    mvnJar + Doc.lineBreak + bind
+    List(jar, bind)
   }
 
   def scalaBinaryRender(bin: ScalaBinary): Doc = {
@@ -253,7 +188,13 @@ object SbtBazel {
   }
 
   def pyCall(name: Doc, args: List[(Doc, Doc)]): Doc = {
-    pyArgs(args).tightBracketBy(name + Doc.char('('), Doc.char(')'))
+    if (args.length >= 2) {
+      pyArgs(args).tightBracketBy(name + Doc.char('('), Doc.char(')'))
+    } else if (args.length == 1) {
+      Doc.text("name(") + pyArgs(args) + Doc.char(')')
+    } else {
+      name + Doc.text("()")
+    }
   }
 
 
@@ -261,68 +202,122 @@ object SbtBazel {
     new JFile(new File(base).getAbsolutePath).toURI.relativize(new File(full).toURI).getPath
   }
 
-  lazy val bazelGenerate: Def.Initialize[Task[File]] = Def.task {
-    val logger = Keys.streams.value.log
-    val project = Keys.thisProject.value
-    val configuration = Keys.configuration.value
-    val baseDirectory = Keys.baseDirectory.value
-    val libraryDependencies = Keys.libraryDependencies.value
-    val classpath = Keys.externalDependencyClasspath.value
-    val sources = Keys.sources.value
-    val mainClass = Keys.mainClass.value
-
-    val srcs = sources.map { src =>
-      Source.Path(relativize(baseDirectory.getAbsolutePath, src.getAbsolutePath))
-    }.toList
-
-    val projectName = nameFromString(project.id, configuration)
-    val buildFile = baseDirectory / s"BUILD"
-    val workspaceFile = baseDirectory / "WORKSPACE"
-
-    val baseProjectDependency = if (configuration == Test) List(project.id) else Nil
-
-    val projectDependencies = project.dependencies
-      .map(dep => nameFromRef(dep.project, configuration))
-      .toList
-
-    val binDeps = classpath
-      .map(_.get(Keys.moduleID.key).get)
-      .map { module =>
-        val bindName = normalizeBindName(module)
-
-        s"//external:$bindName"
-      }.toList
-
-    val externalDeps = Doc.intercalate(Doc.line, classpath.map(mavenJar))
-
-    // TODO Create a workspace file
-
-    val scalaLibrary = ScalaLibrary(name = projectName,
-      projectDeps = projectDependencies,
-      binaryDeps = binDeps,
-      sources = srcs,
-      visibility = Public
-    )
-
-    mainClass.map { main =>
-      val scalaBinary = ScalaBinary(
-        name = s"$projectName-bin",
-        projectDeps = List(s":$projectName"),
-        mainClass = main
-      )
+  def renderPyExpr(expr: PyExpr): Doc = {
+    expr match {
+      case PyStr(s) => str(s)
+      case PyArr(ar) => arr(ar.map(renderPyExpr))
+      case PyBinOp(name, lhs, rhs) => renderPyExpr(lhs) & Doc.text(name) & renderPyExpr(rhs)
+      case PyAssign(varName, rhs) => Doc.text(varName) & Doc.char('=') & renderPyExpr(rhs)
+      case PyVar(name) => Doc.text(name)
+      case PyLoad(label, symbols) =>
+        val args = (label +: symbols).map(renderPyExpr)
+        Doc.intercalate(Doc.char(',') + Doc.lineOrEmpty, args)
+          .tightBracketBy(Doc.text("load("), Doc.char(')'))
+      case PyCall(name, args) =>
+        val docArgs = args.map { case (k, v) =>
+          Doc.text(k) -> renderPyExpr(v)
+        }
+        pyCall(Doc.text(name), docArgs)
     }
-
-    val workspaceRendered = WorkspacePrelude + '\n' +
-      externalDeps.renderTrim(0)
-
-    val rendered =
-      BuildPredule + "\n" + scalaLibraryRender(scalaLibrary).renderTrim(0) + "\n" + scalaBinaryRender(scalaBinary).renderTrim(0)
-
-    logger.info(s"BUILD:\n$rendered")
-
-    Files.write(workspaceFile.toPath, workspaceRendered.getBytes(DefaultCharset))
-    Files.write(buildFile.toPath, rendered.getBytes(DefaultCharset))
-
-    buildFile
   }
+
+  def renderPyExprs(exprs: List[PyExpr]): Doc = {
+    Doc.intercalate(Doc.lineBreak, exprs.map(renderPyExpr))
+  }
+
+  lazy val bazelGenerateMain: Def.Initialize[Task[Option[File]]] = Def.taskDyn {
+
+
+    Def.task {
+      val logger = Keys.streams.value.log
+      val project = Keys.thisProject.value
+      val configuration = Compile
+      val baseDirectory = Keys.baseDirectory.value
+      val managedClasspath = (Keys.managedClasspath in Compile).value
+      val sources = (Keys.sources in Compile).value
+      val mainClass = (Keys.mainClass in Compile).value
+
+      val srcs = sources.map { src =>
+        Source.Path(relativize(baseDirectory.getAbsolutePath, src.getAbsolutePath))
+      }.toList
+      val projectName = nameFromString(project.id, configuration)
+      val buildFile = baseDirectory / s"BUILD"
+      val workspaceFile = baseDirectory / "WORKSPACE"
+
+      val extracted = Project.extract(Keys.state.value)
+
+      val projectDependencies = Keys.thisProject.value.dependencies
+        .flatMap { dep =>
+          (Keys.baseDirectory in dep.project).get(extracted.structure.data).map { dir =>
+            val basePath = (Keys.baseDirectory in ThisBuild).value.getAbsolutePath
+            val projectBasePath = dir.getAbsolutePath
+            val rel = relativize(basePath, projectBasePath)
+            logger.info(s"$projectName $basePath $projectBasePath $rel")
+            s"$rel:${dep.project.project}"
+          }
+        }.toList
+
+      val binDeps = managedClasspath
+        .map(_.get(Keys.moduleID.key).get)
+        .map { module =>
+          val bindName = normalizeBindName(module)
+
+          s"//external:$bindName"
+        }.toList
+
+      val mavenRepoUrl = SbtBazelKeys.bazelMavenRepo.value
+        .orElse((SbtBazelKeys.bazelMavenRepo in ThisBuild).value)
+        .getOrElse(sbt.Resolver.DefaultMavenRepositoryRoot)
+
+      val externalDeps = managedClasspath.flatMap(dep => mavenJar(dep, mavenRepoUrl)).toList
+
+      val scalaLibrary = ScalaLibrary(name = projectName,
+        projectDeps = projectDependencies,
+        binaryDeps = binDeps,
+        sources = srcs,
+        visibility = Public
+      )
+
+      val scalaBinary = mainClass.map { m =>
+        ScalaBinary(
+          name = s"$projectName-bin",
+          projectDeps = List(s":$projectName"),
+          mainClass = m
+        )
+      }
+
+
+      /* Render and write the workspace file */
+
+      val workspaceAst = workspacePrelude("63eab9f4d80612e918ba954211f377cc83d27a07") ++ externalDeps
+      val workspaceDoc = renderPyExprs(workspaceAst)
+      val workspaceRendered = workspaceDoc.renderTrim(0)
+
+      // Only generate the workspace for the root target.
+      val generateWorkspace = Keys.executionRoots.value.contains(Keys.resolvedScoped.value)
+
+      if (generateWorkspace) {
+        Files.write(workspaceFile.toPath, workspaceRendered.getBytes(DefaultCharset))
+      }
+
+      /* Render and write the BUILD file. */
+      val buildDoc = renderPyExprs(buildPrelude) + Doc.lineBreak +
+        scalaLibraryRender(scalaLibrary) + Doc.lineBreak +
+        scalaBinary.map(sb => scalaBinaryRender(sb)).getOrElse(Doc.empty)
+
+      val buildRendered = buildDoc.renderTrim(0)
+
+      Files.write(buildFile.toPath, buildRendered.getBytes(DefaultCharset))
+
+      Some(buildFile)
+    }
+  }
+
+  def bazelWorkspaceGenerateMain: Def.Initialize[Task[File]] = Def.taskDyn {
+
+
+
+    Def.task(???)
+  }
+
 }
