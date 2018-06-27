@@ -39,6 +39,8 @@ object SbtBazelKeys {
   val bazelWorkspaceGenerate = sbt.settingKey[Boolean]("Generate a WORKSPACE file for this project and child projects.")
 
   val bazelMavenRepo = sbt.settingKey[Option[String]]("URI of maven repository")
+
+  val bazelScalaRulesVersion = sbt.settingKey[String]("SHA of scala-rules version")
 }
 
 object SbtBazel {
@@ -146,7 +148,6 @@ object SbtBazel {
 
       /* Render and write the workspace file */
       if(bazelWorkspaceGenerate.value) {
-        logger.info(projectName)
         val allProjectDeps =
           Keys.managedClasspath.all(ScopeFilter(projects=inAnyProject, configurations = inConfigurations(Compile)))
             .value
@@ -158,7 +159,7 @@ object SbtBazel {
         }.toList
 
         val workspaceAst =
-          BazelAst.Helpers.workspacePrelude("63eab9f4d80612e918ba954211f377cc83d27a07") ++
+          BazelAst.Helpers.workspacePrelude((SbtBazelKeys.bazelScalaRulesVersion in ThisBuild).value) ++ //"63eab9f4d80612e918ba954211f377cc83d27a07") ++
             externalDepsAst
         val workspaceDoc = BazelAst.Render.renderPyExprs(workspaceAst)
         val workspaceRendered = workspaceDoc.renderTrim(0)
