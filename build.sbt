@@ -16,7 +16,7 @@ lazy val plugin = project
     ScriptedKeys.scriptedBufferLog := false,
     ScriptedKeys.scriptedLaunchOpts := {
       ScriptedKeys.scriptedLaunchOpts.value ++
-      Seq("-Xmx1024M", "-Dplugin.version=" + Keys.version.value)
+      Seq("-Xmx2048M", "-Dplugin.version=" + Keys.version.value)
     })
   .settings(commonSettings)
   .settings(name := "sbt-bazel")
