@@ -1,5 +1,25 @@
+load(
+  '@io_bazel_rules_scala//scala:scala.bzl',
+  'scala_binary',
+  'scala_library',
+  'scala_test'
+)
 scala_library(
   name = 'root',
-  deps = [],
-  visibility = '//visibility:public',
+  deps = [
+    '//external:jar/org/scala/lang/scala_library_2_12_4',
+  ],
+  visibility = [
+    '//visibility:public',
+  ],
+  srcs = [
+    'src/main/scala/trivial.scala',
+  ]
+)
+scala_binary(
+  name = 'root-bin',
+  deps = [
+    ':root',
+  ],
+  main_class = 'Trivial'
 )

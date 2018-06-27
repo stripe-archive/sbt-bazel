@@ -24,6 +24,7 @@ object SbtBazelPlugin extends AutoPlugin {
     bazelGenerate := SbtBazel.bazelGenerateMain.value,
     bazelBuildGenerate := true,
     bazelMavenRepo := None,
+    (SbtBazelKeys.bazelMavenRepo in ThisBuild) := None,
     bazelWorkspaceGenerate := false,
   )
 
@@ -35,9 +36,9 @@ object SbtBazelKeys {
 
   val bazelBuildGenerate = sbt.settingKey[Boolean]("Generate BUILD for this project")
 
-  val bazelMavenRepo = sbt.settingKey[Option[String]]("URI of maven repository")
-
   val bazelWorkspaceGenerate = sbt.settingKey[Boolean]("Generate a WORKSPACE file for this project and child projects.")
+
+  val bazelMavenRepo = sbt.settingKey[Option[String]]("URI of maven repository")
 }
 
 object SbtBazel {
