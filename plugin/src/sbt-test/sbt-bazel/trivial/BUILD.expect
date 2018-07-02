@@ -9,6 +9,8 @@ scala_library(
   deps = [
     '//external:jar/org/scala/lang/scala_library_2_12_4',
   ],
+  runtime_deps = [],
+  exports = [],
   visibility = [
     '//visibility:public',
   ],
