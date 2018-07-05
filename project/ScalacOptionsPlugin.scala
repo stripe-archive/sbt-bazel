@@ -22,6 +22,8 @@ object ScalacOptionsPlugin extends AutoPlugin {
 
   override def projectSettings: Seq[Def.Setting[_]] = Seq(
 
+    addCompilerPlugin("org.spire-math" % "kind-projector" % "0.9.4" cross CrossVersion.binary),
+
     scalac211Options := defaultScalac211Options,
     scalac212Options :=
       defaultScalac212Options ++ (

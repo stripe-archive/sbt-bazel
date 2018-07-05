@@ -41,7 +41,9 @@ object BazelAst {
 
     def scalaLibrary(
       name: String,
-      projectDeps: List[String],
+      deps: List[String],
+      runtimeDeps: List[String],
+      exports: List[String],
       visibility: String,
       sources: List[String]
     ): PyExpr = {
@@ -49,7 +51,9 @@ object BazelAst {
         "scala_library",
         List(
           "name" -> PyStr(name),
-          "deps" -> PyArr(projectDeps.map(PyStr)),
+          "deps" -> PyArr(deps.map(PyStr)),
+          "runtime_deps" -> PyArr(runtimeDeps.map(PyStr)),
+          "exports" -> PyArr(exports.map(PyStr)),
           "visibility" -> PyArr(List(PyStr(visibility))),
           "srcs" -> PyArr(sources.map(PyStr))
         )
