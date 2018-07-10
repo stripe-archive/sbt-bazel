@@ -6,9 +6,7 @@ load(
 )
 scala_library(
   name = 'root',
-  deps = [
-    '//external:jar/org/scala/lang/scala_library_2_12_4',
-  ],
+  deps = [],
   runtime_deps = [],
   exports = [],
   visibility = [

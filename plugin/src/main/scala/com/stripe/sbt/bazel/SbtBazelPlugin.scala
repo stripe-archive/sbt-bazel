@@ -21,17 +21,7 @@ object SbtBazelPlugin extends AutoPlugin {
     def Empty: Expr[Source] = Mu.embed(Value(Source.Empty))
     def Deps(config: Configuration): Expr[Source] = Evaluate(config / Keys.dependencyClasspath)
     def UsedDeps(config: Configuration): Expr[Source] = Evaluate(config / SbtBazelKeys.zincLibraryDeps)
-
-    /*
-    // TODO
-    def ScalaLib: Expr[Source] = Evaluate(
-      Classpaths.autoLibraryDependency(
-          Keys.autoScalaLibrary.value && Keys.scalaHome.value.isEmpty && Keys.managedScalaInstance.value,
-          Keys.sbtPlugin.value,
-          Keys.scalaOrganization.value,
-          Keys.scalaVersion.value)
-     )
-     */
+    def ScalaLib(config: Configuration): Expr[Source] = Evaluate(config / SbtBazelKeys.scalaLibraryDeps)
   }
 
   sealed trait KeyAliases {
@@ -55,16 +45,18 @@ object SbtBazelPlugin extends AutoPlugin {
       SbtBazelKeys.bazelBuildGenerate     := true,
       SbtBazelKeys.bazelMavenRepo         := None,
       SbtBazelKeys.bazelWorkspaceGenerate := false,
-      SbtBazelKeys.bazelRuleDeps          := UsedDeps(Compile),
-      SbtBazelKeys.bazelRuleRuntimeDeps   := Deps(Compile) - UsedDeps(Compile),
+      SbtBazelKeys.bazelRuleDeps          := UsedDeps(Compile) - ScalaLib(Compile),
+      SbtBazelKeys.bazelRuleRuntimeDeps   := Deps(Compile) - UsedDeps(Compile) - ScalaLib(Compile),
       SbtBazelKeys.bazelRuleExports       := Empty,
     ) ++
-    inConfig(Compile)(
-      SbtBazelKeys.zincLibraryDeps := SbtBazelLogic.zincClasspath(Compile, _.allLibraryDeps).value
-    ) ++
-    inConfig(Test)(
-      SbtBazelKeys.zincLibraryDeps := SbtBazelLogic.zincClasspath(Test, _.allLibraryDeps).value
-    )
+    inConfig(Compile)(Seq(
+      SbtBazelKeys.zincLibraryDeps  := SbtBazelLogic.zincClasspath(Compile, _.allLibraryDeps).value,
+      SbtBazelKeys.scalaLibraryDeps := SbtBazelLogic.scalaClasspath(Compile).value
+    )) ++
+    inConfig(Test)(Seq(
+      SbtBazelKeys.zincLibraryDeps  := SbtBazelLogic.zincClasspath(Test, _.allLibraryDeps).value,
+      SbtBazelKeys.scalaLibraryDeps := SbtBazelLogic.scalaClasspath(Test).value
+    ))
 }
 
 object SbtBazelKeys {
@@ -79,6 +71,7 @@ object SbtBazelKeys {
   val bazelRuleRuntimeDeps  : SettingKey[Expr[Source]]   = settingKey("Expression used to assign the runtime_deps field")
   val bazelRuleExports      : SettingKey[Expr[Source]]   = settingKey("Expression used to assign the exports field")
   val zincLibraryDeps       : TaskKey[Keys.Classpath]    = taskKey("Zinc compute library classpath")
+  val scalaLibraryDeps      : TaskKey[Keys.Classpath]    = taskKey("Scala library classpath")
 }
 
 object SbtBazel {
@@ -160,13 +153,13 @@ object SbtBazel {
       }.toList
 
     def evaluate(expr: Expr[Keys.Classpath]): List[String] = {
-      logger.debug(s"expr: ${expr.map(_.toString).show}")
+      logger.info(s"expr: ${expr.map(_.toString).show}")
       val moduleExpr: Expr[Set[ModuleID]] =
         expr.map(_.flatMap(_.get(Keys.moduleID.key)).toSet)
-      logger.debug(s"modules: ${moduleExpr.map(_.toString).show}")
+      logger.info(s"modules: ${moduleExpr.map(_.toString).show}")
       val labelExpr: Expr[Set[String]] =
         moduleExpr.map(_.map(module => s"//external:${normalizeBindName(module)}"))
-      logger.debug(s"labels: ${labelExpr.map(_.toString).show}")
+      logger.info(s"labels: ${labelExpr.map(_.toString).show}")
       labelExpr(ExprF.evalAlgebra).toList.sorted
     }
 
