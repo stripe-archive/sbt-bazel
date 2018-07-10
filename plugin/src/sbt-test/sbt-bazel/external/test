@@ -1,4 +1,4 @@
 > bazelGenerate
 $ must-mirror BUILD BUILD.expect
 $ exists WORKSPACE
-$ exec bazel build :hello
+#$ exec bazel build :hello

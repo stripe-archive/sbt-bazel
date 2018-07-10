@@ -1,6 +1,7 @@
 package com.stripe.sbt.bazel
 
 import sbt.Keys
+import sbt.Classpaths
 import sbt.Def
 import sbt.Task
 import sbt.librarymanagement.Configuration
@@ -75,5 +76,23 @@ private[bazel] sealed trait ZincLogic {
         f(analysis.relations)
           .flatMap(f => fullClasspath.find(_.data == f))
       }
+  }
+
+  def scalaClasspath(config: Configuration): Def.Initialize[Task[Keys.Classpath]] = Def.task {
+    val moduleID = Classpaths.autoLibraryDependency(
+      Keys.autoScalaLibrary.value && Keys.scalaHome.value.isEmpty && Keys.managedScalaInstance.value,
+      Keys.sbtPlugin.value,
+      Keys.scalaOrganization.value,
+      Keys.scalaVersion.value)
+
+    val fullClasspath = (Keys.fullClasspath in config).value
+
+    moduleID.flatMap(x =>
+      fullClasspath
+        .find(_.get(Keys.moduleID.key).fold(false)(y =>
+          x.name         == y.name &&
+          x.organization == y.organization &&
+          x.revision     == y.revision))
+        .toSeq)
   }
 }

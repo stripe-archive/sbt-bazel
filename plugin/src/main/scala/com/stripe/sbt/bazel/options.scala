@@ -4,10 +4,7 @@ import cats._
 import cats.implicits._
 
 import sbt.TaskKey
-import sbt.Keys
 import sbt.Keys.Classpath
-import sbt.librarymanagement.Configuration
-import sbt.librarymanagement.Configurations.Compile
 
 sealed trait ExprF[V, A]
 object ExprF extends ExprFInstances {
