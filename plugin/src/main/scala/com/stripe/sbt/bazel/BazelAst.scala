@@ -23,6 +23,8 @@ object BazelAst {
 
   final case class PyLoad(label: PyExpr, symbols: List[PyExpr]) extends PyExpr
 
+  final case class PyYoloString(str: String) extends PyExpr
+
   object Helpers {
     def scalaBinary(
       name: String,
@@ -134,6 +136,7 @@ object BazelAst {
             Doc.text(k) -> renderPyExpr(v)
           }
           pyCall(Doc.text(name), docArgs)
+        case PyYoloString(s) => Doc.text(s)
       }
     }
 

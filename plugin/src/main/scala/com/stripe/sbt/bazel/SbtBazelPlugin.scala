@@ -1,13 +1,12 @@
 package com.stripe.sbt.bazel
 
-import sbt._
-import com.stripe.sbt.bazel.BazelAst._
+import java.io.{File => JFile}
 import java.nio.charset.Charset
 import java.nio.file.Files
-import java.io.{File => JFile}
 
 import cats.implicits._
-
+import com.stripe.sbt.bazel.BazelAst._
+import sbt._
 import sbt.plugins.JvmPlugin
 
 object SbtBazelPlugin extends AutoPlugin {
@@ -24,14 +23,28 @@ object SbtBazelPlugin extends AutoPlugin {
     def ScalaLib(config: Configuration): Expr[Source] = Evaluate(config / SbtBazelKeys.scalaLibraryDeps)
   }
 
+  sealed trait BazelDSL {
+    import BazelDslF._
+    implicit def toBazelDslOps(x: BazelDsl): BazelDSLOps = new BazelDSLOps(x)
+    val empty: BazelDsl = Mu.embed[BazelDslF](Empty)
+    val mavenBindings: BazelDsl = Mu.embed(MavenBindings(empty))
+    val workspacePrelude: BazelDsl = Mu.embed(WorkspacePrelude(empty))
+    def yoloString(str: String): BazelDsl = Mu.embed(YoloString(str, empty))
+    val buildPrelude: BazelDsl = Mu.embed(BuildPrelude(empty))
+    def buildTargets: BazelDsl = Mu.embed(BuildTargets(empty))
+  }
+
   sealed trait KeyAliases {
     def bazelBuildGenerate = SbtBazelKeys.bazelBuildGenerate
     def bazelWorkspaceGenerate = SbtBazelKeys.bazelWorkspaceGenerate
     def bazelMavenRepo = SbtBazelKeys.bazelMavenRepo
     def bazelScalaRulesVersion = SbtBazelKeys.bazelScalaRulesVersion
+    def bazelCustomWorkspace = SbtBazelKeys.bazelCustomWorkspace
+    def bazelCustomBuild = SbtBazelKeys.bazelCustomBuild
   }
 
-  object autoImport extends ExprDSL with KeyAliases
+  object autoImport extends ExprDSL with KeyAliases with BazelDSL
+
   import autoImport._
 
   override def buildSettings: Seq[Def.Setting[_]] =
@@ -48,6 +61,8 @@ object SbtBazelPlugin extends AutoPlugin {
       SbtBazelKeys.bazelRuleDeps          := UsedDeps(Compile) - ScalaLib(Compile),
       SbtBazelKeys.bazelRuleRuntimeDeps   := Deps(Compile) - UsedDeps(Compile) - ScalaLib(Compile),
       SbtBazelKeys.bazelRuleExports       := Empty,
+      SbtBazelKeys.bazelCustomWorkspace   := workspacePrelude +: mavenBindings,
+      SbtBazelKeys.bazelCustomBuild       := buildPrelude +: buildTargets
     ) ++
     inConfig(Compile)(Seq(
       SbtBazelKeys.zincLibraryDeps  := SbtBazelLogic.zincClasspath(Compile, _.allLibraryDeps).value,
@@ -60,8 +75,12 @@ object SbtBazelPlugin extends AutoPlugin {
 }
 
 object SbtBazelKeys {
-  import sbt.{ settingKey, taskKey }
 
+
+  import sbt.settingKey
+  import sbt.taskKey
+
+  val bazelCustomBuild      : SettingKey[BazelDsl]       = settingKey("Custom BUILD file for the project")
   val bazelGenerate         : TaskKey[Option[File]]      = taskKey("Generate a Bazel build file for this project")
   val bazelBuildGenerate    : SettingKey[Boolean]        = settingKey("Generate BUILD for this project")
   val bazelWorkspaceGenerate: SettingKey[Boolean]        = settingKey("Generate a WORKSPACE file for this project and child projects.")
@@ -72,6 +91,7 @@ object SbtBazelKeys {
   val bazelRuleExports      : SettingKey[Expr[Source]]   = settingKey("Expression used to assign the exports field")
   val zincLibraryDeps       : TaskKey[Keys.Classpath]    = taskKey("Zinc compute library classpath")
   val scalaLibraryDeps      : TaskKey[Keys.Classpath]    = taskKey("Scala library classpath")
+  val bazelCustomWorkspace  : SettingKey[BazelDsl]       = settingKey("Customize the generated WORKSPACE file.")
 }
 
 object SbtBazel {
@@ -132,6 +152,7 @@ object SbtBazel {
     val baseDirectory = Keys.baseDirectory.value
     val sources = (Keys.sources in Compile).value
     val mainClass = (Keys.mainClass in Compile).value
+    val bazelScalaRulesVersion = SbtBazelKeys.bazelScalaRulesVersion.value
 
     val srcs = sources.map { src =>
       relativize(baseDirectory.getAbsolutePath, src.getAbsolutePath)
@@ -195,10 +216,15 @@ object SbtBazel {
         mavenJar(dep, mavenRepoUrl)
       }.toList
 
-      val workspaceAst =
-        BazelAst.Helpers.workspacePrelude((SbtBazelKeys.bazelScalaRulesVersion in ThisBuild).value) ++ //"63eab9f4d80612e918ba954211f377cc83d27a07") ++
-        externalDepsAst
-      val workspaceDoc = BazelAst.Render.renderPyExprs(workspaceAst)
+      val workspaceAst = SbtBazelKeys.bazelCustomWorkspace.value.apply(
+        BazelDsl.pyExprAlgebra(
+          externalDepsAst,
+          List.empty,
+          bazelScalaRulesVersion
+        )
+      )
+
+      val workspaceDoc = BazelAst.Render.renderPyExprs(workspaceAst.toList)
       val workspaceRendered = workspaceDoc.renderTrim(0)
 
       Files.write(workspaceFile.toPath, workspaceRendered.getBytes(DefaultCharset))
@@ -206,10 +232,14 @@ object SbtBazel {
 
     /* Render and write the BUILD file. */
     if (SbtBazelKeys.bazelBuildGenerate.value) {
-      val buildAst = BazelAst.Helpers.buildPrelude ++
-        List(scalaLibrary) ++
-        scalaBinary.fold[List[PyExpr]](List())(b => List(b))
-      val buildDoc = BazelAst.Render.renderPyExprs(buildAst)
+      val buildAst = SbtBazelKeys.bazelCustomBuild.value.apply(
+        BazelDsl.pyExprAlgebra(
+          List.empty,
+          List(scalaLibrary) ++ scalaBinary.fold[List[PyExpr]](List())(b => List(b)),
+          bazelScalaRulesVersion
+        )
+      )
+      val buildDoc = BazelAst.Render.renderPyExprs(buildAst.toList)
       val buildRendered = buildDoc.renderTrim(0)
       Files.write(buildFile.toPath, buildRendered.getBytes(DefaultCharset))
     }
