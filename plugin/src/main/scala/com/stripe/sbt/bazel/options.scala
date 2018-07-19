@@ -2,7 +2,7 @@ package com.stripe.sbt.bazel
 
 import cats._
 import cats.implicits._
-
+import com.stripe.sbt.bazel.BazelAst.PyExpr
 import sbt.TaskKey
 import sbt.Keys.Classpath
 
@@ -61,4 +61,45 @@ private[bazel] sealed trait ExprFInstances {
           case Difference  (x, y)        => Difference  (f(x), f(y))
         }
     }
+}
+
+sealed trait BazelDslF[+A]
+object BazelDslF {
+  case class YoloString[A](str: String, next: A) extends BazelDslF[A]
+  case class WorkspacePrelude[A](next: A) extends BazelDslF[A]
+  case class MavenBindings[A](next: A) extends BazelDslF[A]
+  case class BuildPrelude[A](next: A) extends BazelDslF[A]
+  case class BuildTargets[A](next: A) extends BazelDslF[A]
+  case object Empty extends BazelDslF[Nothing]
+}
+
+class BazelDSLOps(val x: BazelDsl) extends AnyVal {
+  import BazelDsl.appendAlgebra
+  def +:(y: BazelDsl): BazelDsl = x.apply(appendAlgebra(y))
+}
+
+object BazelDsl {
+  import BazelDslF._
+
+  def appendAlgebra(next: BazelDsl): BazelDslF[BazelDsl] => BazelDsl = {
+    case YoloString(s, n)       => Mu.embed(YoloString(s, n))
+    case WorkspacePrelude(n)    => Mu.embed(WorkspacePrelude(n))
+    case MavenBindings(n)       => Mu.embed(MavenBindings(n))
+    case BuildPrelude(n)        => Mu.embed(BuildPrelude(n))
+    case BuildTargets(n)        => Mu.embed(BuildTargets(n))
+    case Empty                  => next
+  }
+
+  def pyExprAlgebra(
+    mvnBindings: List[PyExpr],
+    buildTargets: List[PyExpr],
+    bazelVersion: String
+  ): BazelDslF[Vector[BazelAst.PyExpr]] => Vector[BazelAst.PyExpr] = {
+    case YoloString(s, n)       => n :+ BazelAst.PyYoloString(s)
+    case WorkspacePrelude(n)    => n ++ BazelAst.Helpers.workspacePrelude(bazelVersion)
+    case MavenBindings(n)       => n ++ mvnBindings
+    case BuildPrelude(n)        => n ++ BazelAst.Helpers.buildPrelude
+    case BuildTargets(n)        => n ++ buildTargets
+    case Empty                  => Vector.empty[BazelAst.PyExpr]
+  }
 }
