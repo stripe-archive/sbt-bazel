@@ -1,37 +1,50 @@
 package com.stripe.sbt.bazel
 
-import sbt.Keys
-import sbt.Classpaths
-import sbt.Def
-import sbt.Task
-import sbt.librarymanagement.Configuration
-import sbt.internal.inc.Analysis
-import sbt.internal.inc.Relations
+import java.io.{File => JavaFile}
 
 import cats.implicits._
+import com.stripe.sbt.bazel.SbtBazel.relativize
+import sbt.Classpaths
+import sbt.Def
+import sbt.DefaultMavenRepository
+import sbt.Keys
+import sbt.MavenRepository
+import sbt.Project
+import sbt.ScopeFilter
+import sbt.Task
+import sbt.ThisBuild
+import sbt.inAnyProject
+import sbt.inConfigurations
+import sbt.internal.inc.Analysis
+import sbt.internal.inc.Relations
+import sbt.librarymanagement.Configuration
+import sbt.librarymanagement.ModuleID
 
-import scala.collection.{ Set => HazySet }
-import java.io.{ File => JavaFile }
+import scala.collection.{Set => HazySet}
 
 object SbtBazelLogic extends ExprLogic with ZincLogic
 
 private[bazel] sealed trait ExprLogic {
 
-  val ruleDeps: Def.Initialize[Task[Expr[Keys.Classpath]]] =
+  val ruleDeps: Def.Initialize[Task[Expr[Seq[ProjectDep]]]] =
     Def.taskDyn(mapToClasspath(SbtBazelKeys.bazelRuleDeps.value))
 
-  val ruleRuntimeDeps: Def.Initialize[Task[Expr[Keys.Classpath]]] =
+  val ruleRuntimeDeps: Def.Initialize[Task[Expr[Seq[ProjectDep]]]] =
     Def.taskDyn(mapToClasspath(SbtBazelKeys.bazelRuleRuntimeDeps.value))
 
-  val ruleExports: Def.Initialize[Task[Expr[Keys.Classpath]]] =
+  val ruleExports: Def.Initialize[Task[Expr[Seq[ProjectDep]]]] =
     Def.taskDyn(mapToClasspath(SbtBazelKeys.bazelRuleExports.value))
 
-  private val sourceToClasspathTask: Source => Def.Initialize[Task[Keys.Classpath]] = {
-    case Source.Evaluate(taskKey) => Def.task(taskKey.value)
-    case Source.Empty             => Def.task(Seq.empty: Keys.Classpath)
+  val mavenDeps: Def.Initialize[Task[Expr[Seq[ProjectDep]]]] =
+    Def.taskDyn(mapToClasspath(SbtBazelKeys.bazelMavenDeps.value))
+
+  private def sourceToModuleIdTask: Source => Def.Initialize[Task[Seq[ProjectDep]]] = {
+    case Source.Evaluate(task) => task
+    case Source.Pure(p)        => Def.task(Seq(p))
+    case Source.Empty          => Def.task(Seq.empty)
   }
 
-  private def mapToClasspath(expr: Expr[Source]): Def.Initialize[Task[Expr[Keys.Classpath]]] = Def.taskDyn {
+  private def mapToClasspath(expr: Expr[Source]): Def.Initialize[Task[Expr[Seq[ProjectDep]]]] = Def.taskDyn {
     // Heads up!
     // this is all a giant dance to do:
     //
@@ -47,9 +60,9 @@ private[bazel] sealed trait ExprLogic {
     }
 
     // hats off to SBT for the most un-ergonomic .sequence.sequence
-    val Zoo: Seq[Def.Initialize[Task[Keys.Classpath]]] = sources.map(sourceToClasspathTask)
-    val oZo: Def.Initialize[Seq[Task[Keys.Classpath]]] = Def.Initialize.join(Zoo)
-    val ooZ: Def.Initialize[Task[Seq[Keys.Classpath]]] = oZo.apply(_.join)
+    val Zoo: Seq[Def.Initialize[Task[Seq[ProjectDep]]]] = sources.map(sourceToModuleIdTask)
+    val oZo: Def.Initialize[Seq[Task[Seq[ProjectDep]]]] = Def.Initialize.join(Zoo)
+    val ooZ: Def.Initialize[Task[Seq[Seq[ProjectDep]]]] = oZo.apply(_.join)
 
     // also hats off for .map being .apply, but only for Initialize
     ooZ.apply(_
@@ -67,7 +80,7 @@ private[bazel] sealed trait ZincLogic {
   def zincClasspath(
     config: Configuration,
     f: Relations => HazySet[JavaFile]
-  ): Def.Initialize[Task[Keys.Classpath]] = Def.task {
+  ): Def.Initialize[Task[Seq[ProjectDep]]] = Def.task {
     val fullClasspath = (Keys.fullClasspath in config).value
     Option((Keys.compile in config).value)
       .collect { case a: Analysis => a }
@@ -76,9 +89,11 @@ private[bazel] sealed trait ZincLogic {
         f(analysis.relations)
           .flatMap(f => fullClasspath.find(_.data == f))
       }
+      .flatMap(_.get(Keys.moduleID.key))
+      .map(ProjectDep.ModuleIdDep)
   }
 
-  def scalaClasspath(config: Configuration): Def.Initialize[Task[Keys.Classpath]] = Def.task {
+  def scalaClasspath(config: Configuration): Def.Initialize[Task[Seq[ProjectDep]]] = Def.task {
     val moduleID = Classpaths.autoLibraryDependency(
       Keys.autoScalaLibrary.value && Keys.scalaHome.value.isEmpty && Keys.managedScalaInstance.value,
       Keys.sbtPlugin.value,
@@ -94,5 +109,51 @@ private[bazel] sealed trait ZincLogic {
           x.organization == y.organization &&
           x.revision     == y.revision))
         .toSeq)
+      .flatMap(_.get(Keys.moduleID.key))
+      .map(ProjectDep.ModuleIdDep)
+  }
+
+  def allExternalClasspath(config: Configuration): Def.Initialize[Task[Seq[ProjectDep]]] = {
+    val classpath = Keys.externalDependencyClasspath
+      .all(ScopeFilter(projects = inAnyProject, configurations = inConfigurations(config)))
+      .map(_.flatten)
+
+    val moduleIds = classpath.apply(_.map(_.flatMap(_.get(Keys.moduleID.key))))
+
+    moduleIds.apply(_.map(_.map(ProjectDep.ModuleIdDep)))
+  }
+
+  def allMavenResolvers(configuration: Configuration): Def.Initialize[Task[Seq[String]]] = Def.task {
+    val additionalResolvers = Keys.resolvers.all(
+      ScopeFilter(
+        projects = inAnyProject,
+        configurations = inConfigurations(configuration)
+      )
+    ).value
+
+    val resolverUrls = additionalResolvers.flatten.map {
+      case r: MavenRepository => r.root
+      case r => throw new RuntimeException(s"Unsupported resolver: $r")
+    }
+
+    DefaultMavenRepository.root +: resolverUrls
+  }
+
+  def internalAndExternalDeps(config: Configuration): Def.Initialize[Task[Seq[ProjectDep]]] = Def.task {
+    val extracted = Project.extract(Keys.state.value)
+
+    val internalDeps = Keys.thisProject.value.dependencies
+      .flatMap { dep => dep.project
+        (Keys.baseDirectory in dep.project).get(extracted.structure.data).map { dir =>
+          val basePath = (Keys.baseDirectory in ThisBuild).value.getAbsolutePath
+          val projectBasePath = dir.getAbsolutePath
+          val rel = relativize(basePath, projectBasePath).stripSuffix("/")
+          ProjectDep.ManualDep(s"//$rel:${dep.project.project}")
+        }
+      }.toList
+
+    val externalDeps = (config / Keys.externalDependencyClasspath).value.flatMap(_.get(Keys.moduleID.key)).map(ProjectDep.ModuleIdDep)
+
+    internalDeps ++ externalDeps
   }
 }

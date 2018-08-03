@@ -3,10 +3,11 @@ package com.stripe.sbt.bazel
 import cats._
 import cats.implicits._
 import com.stripe.sbt.bazel.BazelAst.PyExpr
-import sbt.TaskKey
-import sbt.Keys.Classpath
+import sbt.Def
+import sbt.Task
+import sbt.librarymanagement.ModuleID
 
-sealed trait ExprF[V, A]
+sealed trait ExprF[+V, A]
 object ExprF extends ExprFInstances {
   def showAlgebra[V: Show]: ExprF[V, String] => String = {
     case Value       (name) => name.show
@@ -37,10 +38,17 @@ final case class Difference[V, A](x: A, y: A) extends ExprF[V, A]
 
 sealed trait Source
 object Source {
-  case class Evaluate(taskKey: TaskKey[Classpath]) extends Source
+  case class Evaluate(task: Def.Initialize[Task[Seq[ProjectDep]]]) extends Source
+  case class Pure(v: ProjectDep) extends Source
   case object Empty extends Source
 
-  implicit val showSource: Show[Source] = Show.fromToString
+  implicit def showSource: Show[Source] = Show.fromToString
+}
+
+sealed trait ProjectDep
+object ProjectDep {
+  case class ModuleIdDep(moduleID: ModuleID) extends ProjectDep
+  case class ManualDep(dep: String) extends ProjectDep
 }
 
 final class ExprOps[V](val x: Expr[V]) extends AnyVal {
