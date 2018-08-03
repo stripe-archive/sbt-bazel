@@ -3,11 +3,12 @@ package com.stripe.sbt.bazel
 import cats._
 import cats.implicits._
 import com.stripe.sbt.bazel.BazelAst.PyExpr
+import com.stripe.sbt.bazel.SbtBazel.normalizeBindName
 import sbt.Def
 import sbt.Task
 import sbt.librarymanagement.ModuleID
 
-sealed trait ExprF[+V, A]
+sealed trait ExprF[V, A]
 object ExprF extends ExprFInstances {
   def showAlgebra[V: Show]: ExprF[V, String] => String = {
     case Value       (name) => name.show
@@ -36,6 +37,9 @@ final case class Union[V, A](x: A, y: A) extends ExprF[V, A]
 final case class Intersection[V, A](x: A, y: A) extends ExprF[V, A]
 final case class Difference[V, A](x: A, y: A) extends ExprF[V, A]
 
+/* A structure that holds either:
+   - ProjectDeps
+   - Or a task that will eventually produce ProjectDeps */
 sealed trait Source
 object Source {
   case class Evaluate(task: Def.Initialize[Task[Seq[ProjectDep]]]) extends Source
@@ -48,7 +52,16 @@ object Source {
 sealed trait ProjectDep
 object ProjectDep {
   case class ModuleIdDep(moduleID: ModuleID) extends ProjectDep
-  case class ManualDep(dep: String) extends ProjectDep
+  case class StringDep(dep: String) extends ProjectDep
+  case class BazelDep(path: String, name: String) extends ProjectDep
+
+  def render(dep: ProjectDep): String = {
+    dep match {
+      case ProjectDep.ModuleIdDep(module) => s"//external:${normalizeBindName(module)}"
+      case ProjectDep.StringDep(dep) => dep
+      case ProjectDep.BazelDep(path, target) => s"$path:$target"
+    }
+  }
 }
 
 final class ExprOps[V](val x: Expr[V]) extends AnyVal {

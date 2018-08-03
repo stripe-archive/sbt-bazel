@@ -18,7 +18,6 @@ import sbt.inConfigurations
 import sbt.internal.inc.Analysis
 import sbt.internal.inc.Relations
 import sbt.librarymanagement.Configuration
-import sbt.librarymanagement.ModuleID
 
 import scala.collection.{Set => HazySet}
 
@@ -27,24 +26,24 @@ object SbtBazelLogic extends ExprLogic with ZincLogic
 private[bazel] sealed trait ExprLogic {
 
   val ruleDeps: Def.Initialize[Task[Expr[Seq[ProjectDep]]]] =
-    Def.taskDyn(mapToClasspath(SbtBazelKeys.bazelRuleDeps.value))
+    Def.taskDyn(mapToProjectDep(SbtBazelKeys.bazelRuleDeps.value))
 
   val ruleRuntimeDeps: Def.Initialize[Task[Expr[Seq[ProjectDep]]]] =
-    Def.taskDyn(mapToClasspath(SbtBazelKeys.bazelRuleRuntimeDeps.value))
+    Def.taskDyn(mapToProjectDep(SbtBazelKeys.bazelRuleRuntimeDeps.value))
 
   val ruleExports: Def.Initialize[Task[Expr[Seq[ProjectDep]]]] =
-    Def.taskDyn(mapToClasspath(SbtBazelKeys.bazelRuleExports.value))
+    Def.taskDyn(mapToProjectDep(SbtBazelKeys.bazelRuleExports.value))
 
   val mavenDeps: Def.Initialize[Task[Expr[Seq[ProjectDep]]]] =
-    Def.taskDyn(mapToClasspath(SbtBazelKeys.bazelMavenDeps.value))
+    Def.taskDyn(mapToProjectDep(SbtBazelKeys.bazelMavenDeps.value))
 
-  private def sourceToModuleIdTask: Source => Def.Initialize[Task[Seq[ProjectDep]]] = {
+  private def sourceToProjectDep: Source => Def.Initialize[Task[Seq[ProjectDep]]] = {
     case Source.Evaluate(task) => task
-    case Source.Pure(p)        => Def.task(Seq(p))
+    case Source.Pure(v)        => Def.task(Seq(v))
     case Source.Empty          => Def.task(Seq.empty)
   }
 
-  private def mapToClasspath(expr: Expr[Source]): Def.Initialize[Task[Expr[Seq[ProjectDep]]]] = Def.taskDyn {
+  private def mapToProjectDep(expr: Expr[Source]): Def.Initialize[Task[Expr[Seq[ProjectDep]]]] = Def.taskDyn {
     // Heads up!
     // this is all a giant dance to do:
     //
@@ -60,7 +59,7 @@ private[bazel] sealed trait ExprLogic {
     }
 
     // hats off to SBT for the most un-ergonomic .sequence.sequence
-    val Zoo: Seq[Def.Initialize[Task[Seq[ProjectDep]]]] = sources.map(sourceToModuleIdTask)
+    val Zoo: Seq[Def.Initialize[Task[Seq[ProjectDep]]]] = sources.map(sourceToProjectDep)
     val oZo: Def.Initialize[Seq[Task[Seq[ProjectDep]]]] = Def.Initialize.join(Zoo)
     val ooZ: Def.Initialize[Task[Seq[Seq[ProjectDep]]]] = oZo.apply(_.join)
 
@@ -148,11 +147,14 @@ private[bazel] sealed trait ZincLogic {
           val basePath = (Keys.baseDirectory in ThisBuild).value.getAbsolutePath
           val projectBasePath = dir.getAbsolutePath
           val rel = relativize(basePath, projectBasePath).stripSuffix("/")
-          ProjectDep.ManualDep(s"//$rel:${dep.project.project}")
+          ProjectDep.BazelDep(rel, dep.project.project)
         }
       }.toList
 
-    val externalDeps = (config / Keys.externalDependencyClasspath).value.flatMap(_.get(Keys.moduleID.key)).map(ProjectDep.ModuleIdDep)
+    val externalDeps = (config / Keys.externalDependencyClasspath)
+      .value
+      .flatMap(_.get(Keys.moduleID.key))
+      .map(ProjectDep.ModuleIdDep)
 
     internalDeps ++ externalDeps
   }

@@ -19,31 +19,31 @@ object SbtBazelPlugin extends AutoPlugin {
   sealed trait ExprDSL {
     implicit def toExprOps[V](x: Expr[V]): ExprOps[V] = new ExprOps(x)
     def Evaluate[A](task: Def.Initialize[Task[Seq[ProjectDep]]]): Expr[Source] = Mu.embed(Value(Source.Evaluate(task)))
-    def Empty: Expr[Source] = Mu.embed(Value(Source.Empty))
+    def EmptyDep: Expr[Source] = Mu.embed(Value(Source.Empty))
     def Deps(config: Configuration): Expr[Source] = Evaluate(SbtBazelLogic.internalAndExternalDeps(config))
-    def UsedDeps(config: Configuration): Expr[Source] = Evaluate(config / SbtBazelKeys.zincLibraryDeps)
+    // FIXME: UsedDeps calculation misses some deps.
+    // def UsedDeps(config: Configuration): Expr[Source] = Evaluate(config / SbtBazelKeys.zincLibraryDeps)
     def ScalaLib(config: Configuration): Expr[Source] = Evaluate(config / SbtBazelKeys.scalaLibraryDeps)
-    def Dep(moduleId: ModuleID): Expr[Source] = Mu.embed(Value(Source.Pure(ProjectDep.ModuleIdDep(moduleId))))
-    def ManualDep(dep: String): Expr[Source] = Mu.embed(Value(Source.Pure(ProjectDep.ManualDep(dep))))
+    def ModuleDep(moduleId: ModuleID): Expr[Source] = Mu.embed(Value(Source.Pure(ProjectDep.ModuleIdDep(moduleId))))
+    def StringDep(dep: String): Expr[Source] = Mu.embed(Value(Source.Pure(ProjectDep.StringDep(dep))))
+    def BazelDep(path: String, name: String): Expr[Source] = Mu.embed(Value(Source.Pure(ProjectDep.BazelDep(path, name))))
     def AllExternalDeps(config: Configuration): Expr[Source] = Evaluate(SbtBazelLogic.allExternalClasspath(config))
   }
   object ExprDSL extends ExprDSL
 
   sealed trait BazelDSL {
-    import BazelDslF._
     implicit def toBazelDslOps(x: BazelDsl): BazelDSLOps = new BazelDSLOps(x)
-    val empty: BazelDsl = Mu.embed[BazelDslF](Empty)
-    val mavenBindings: BazelDsl = Mu.embed(MavenBindings(empty))
-    val workspacePrelude: BazelDsl = Mu.embed(WorkspacePrelude(empty))
-    def yoloString(str: String): BazelDsl = Mu.embed(YoloString(str, empty))
-    val buildPrelude: BazelDsl = Mu.embed(BuildPrelude(empty))
-    def buildTargets: BazelDsl = Mu.embed(BuildTargets(empty))
+    val BazelEmpty: BazelDsl = Mu.embed[BazelDslF](BazelDslF.Empty)
+    val MavenBindings: BazelDsl = Mu.embed(BazelDslF.MavenBindings(BazelEmpty))
+    val WorkspacePrelude: BazelDsl = Mu.embed(BazelDslF.WorkspacePrelude(BazelEmpty))
+    def BazelString(str: String): BazelDsl = Mu.embed(BazelDslF.YoloString(str, BazelEmpty))
+    val BuildPrelude: BazelDsl = Mu.embed(BazelDslF.BuildPrelude(BazelEmpty))
+    def BuildTargets: BazelDsl = Mu.embed(BazelDslF.BuildTargets(BazelEmpty))
   }
 
   sealed trait KeyAliases {
     def bazelBuildGenerate = SbtBazelKeys.bazelBuildGenerate
     def bazelWorkspaceGenerate = SbtBazelKeys.bazelWorkspaceGenerate
-    def bazelMavenRepo = SbtBazelKeys.bazelMavenRepo
     def bazelScalaRulesVersion = SbtBazelKeys.bazelScalaRulesVersion
     def bazelCustomWorkspace = SbtBazelKeys.bazelCustomWorkspace
     def bazelCustomBuild = SbtBazelKeys.bazelCustomBuild
@@ -64,14 +64,13 @@ object SbtBazelPlugin extends AutoPlugin {
     Seq(
       SbtBazelKeys.bazelGenerate          := SbtBazel.bazelGenerateMain.value,
       SbtBazelKeys.bazelBuildGenerate     := true,
-      SbtBazelKeys.bazelMavenRepo         := None,
       SbtBazelKeys.bazelWorkspaceGenerate := false,
       SbtBazelKeys.bazelRuleDeps          := Deps(Compile) - ScalaLib(Compile),
-      SbtBazelKeys.bazelRuleRuntimeDeps   := Empty,
-      SbtBazelKeys.bazelRuleExports       := Empty,
+      SbtBazelKeys.bazelRuleRuntimeDeps   := EmptyDep,
+      SbtBazelKeys.bazelRuleExports       := EmptyDep,
       SbtBazelKeys.bazelMavenDeps         := AllExternalDeps(Compile),
-      SbtBazelKeys.bazelCustomWorkspace   := workspacePrelude +: mavenBindings,
-      SbtBazelKeys.bazelCustomBuild       := buildPrelude +: buildTargets
+      SbtBazelKeys.bazelCustomWorkspace   := WorkspacePrelude +: MavenBindings,
+      SbtBazelKeys.bazelCustomBuild       := BuildPrelude +: BuildTargets
     ) ++
     inConfig(Compile)(Seq(
       SbtBazelKeys.zincLibraryDeps   := SbtBazelLogic.zincClasspath(Compile, _.allLibraryDeps).value,
@@ -101,8 +100,8 @@ object SbtBazelKeys {
   val bazelRuleRuntimeDeps  : SettingKey[Expr[Source]]   = settingKey("Expression used to assign the runtime_deps field")
   val bazelRuleExports      : SettingKey[Expr[Source]]   = settingKey("Expression used to assign the exports field")
   val bazelMavenDeps        : SettingKey[Expr[Source]]   = settingKey("Expression used to assign external maven deps")
-  val zincLibraryDeps       : TaskKey[Seq[ProjectDep]]    = taskKey("Zinc compute library classpath")
-  val scalaLibraryDeps      : TaskKey[Seq[ProjectDep]]    = taskKey("Scala library classpath")
+  val zincLibraryDeps       : TaskKey[Seq[ProjectDep]]   = taskKey("Zinc compute library classpath")
+  val scalaLibraryDeps      : TaskKey[Seq[ProjectDep]]   = taskKey("Scala library classpath")
   val bazelCustomWorkspace  : SettingKey[BazelDsl]       = settingKey("Customize the generated WORKSPACE file.")
   val allMavenResolvers     : TaskKey[Seq[String]]       = taskKey("All maven resolver URLs.")
 }
@@ -173,6 +172,7 @@ object SbtBazel {
     val mainClass = (Keys.mainClass in Compile).value
     val bazelScalaRulesVersion = SbtBazelKeys.bazelScalaRulesVersion.value
     val mavenRepos = (SbtBazelKeys.allMavenResolvers in Compile).value
+    val scalaVersion = Keys.scalaVersion.value
 
     val srcs = sources.map { src =>
       relativize(baseDirectory.getAbsolutePath, src.getAbsolutePath)
@@ -184,23 +184,14 @@ object SbtBazel {
     logger.info(s"Generating files for: $projectName")
 
     def evaluate(expr: Expr[Seq[ProjectDep]]): List[String] = {
-      logger.info(s"expr: ${expr.map(_.toString).show}")
-      val moduleExpr: Expr[Set[ProjectDep]] =
-        expr.map(_.toSet)
-      logger.info(s"modules: ${moduleExpr.map(_.toString).show}")
-      // FIXME: Not all deps are external. Currently fixed by only including ExternalDeps in `SbtBazelKeys.bazelRuleDeps`
-      val labelExpr: Expr[Set[String]] =
-        moduleExpr.map(_.map{
-          case ProjectDep.ModuleIdDep(module) => s"//external:${normalizeBindName(module)}"
-          case ProjectDep.ManualDep(dep) => dep
-        })
-      logger.info(s"labels: ${labelExpr.map(_.toString).show}")
+      val moduleExpr: Expr[Set[ProjectDep]] = expr.map(_.toSet)
+      val labelExpr: Expr[Set[String]] = moduleExpr.map(_.map(ProjectDep.render))
       labelExpr(ExprF.evalAlgebra).toList.sorted
     }
 
     val scalaLibrary = BazelAst.Helpers.scalaLibrary(
       projectName,
-      evaluate(ruleDeps), // todo: remove separate projectDependencies calculation
+      evaluate(ruleDeps),
       evaluate(ruleRuntimeDeps),
       evaluate(ruleExports),
       "//visibility:public",
@@ -218,11 +209,15 @@ object SbtBazel {
 
     /* Render and write the workspace file */
     if (SbtBazelKeys.bazelWorkspaceGenerate.value) {
-      val mavenModuleIds: Set[ModuleID] = mavenDeps.map(_.toSet)(ExprF.evalAlgebra).collect{case ProjectDep.ModuleIdDep(m) => m}
+      val mavenModuleIds: List[ModuleID] = mavenDeps
+        .map(_.toSet)(ExprF.evalAlgebra)
+        .collect{case ProjectDep.ModuleIdDep(m) => m}
+        .toList
+        .sortBy(m => (m.organization, m.name, m.revision))
 
       val externalDepsAst: List[PyExpr] = for {
-        moduleId    <- mavenModuleIds.toList
-        mavenPyExpr <- mavenJar(moduleId, mavenRepos.toList, Keys.scalaVersion.value)
+        moduleId    <- mavenModuleIds
+        mavenPyExpr <- mavenJar(moduleId, mavenRepos.toList, scalaVersion)
       } yield mavenPyExpr
 
       val workspaceAst = SbtBazelKeys.bazelCustomWorkspace.value.apply(
@@ -244,7 +239,7 @@ object SbtBazel {
       val buildAst = SbtBazelKeys.bazelCustomBuild.value.apply(
         BazelDsl.pyExprAlgebra(
           List.empty,
-          List(scalaLibrary) ++ scalaBinary.fold[List[PyExpr]](List())(b => List(b)),
+          scalaLibrary +: scalaBinary.fold[List[PyExpr]](List())(b => List(b)),
           bazelScalaRulesVersion
         )
       )
