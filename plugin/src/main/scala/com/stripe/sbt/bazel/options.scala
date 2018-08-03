@@ -3,8 +3,10 @@ package com.stripe.sbt.bazel
 import cats._
 import cats.implicits._
 import com.stripe.sbt.bazel.BazelAst.PyExpr
-import sbt.TaskKey
-import sbt.Keys.Classpath
+import com.stripe.sbt.bazel.SbtBazel.normalizeBindName
+import sbt.Def
+import sbt.Task
+import sbt.librarymanagement.ModuleID
 
 sealed trait ExprF[V, A]
 object ExprF extends ExprFInstances {
@@ -35,12 +37,31 @@ final case class Union[V, A](x: A, y: A) extends ExprF[V, A]
 final case class Intersection[V, A](x: A, y: A) extends ExprF[V, A]
 final case class Difference[V, A](x: A, y: A) extends ExprF[V, A]
 
+/* A structure that holds either:
+   - ProjectDeps
+   - Or a task that will eventually produce ProjectDeps */
 sealed trait Source
 object Source {
-  case class Evaluate(taskKey: TaskKey[Classpath]) extends Source
+  case class Evaluate(task: Def.Initialize[Task[Seq[ProjectDep]]]) extends Source
+  case class Pure(v: ProjectDep) extends Source
   case object Empty extends Source
 
-  implicit val showSource: Show[Source] = Show.fromToString
+  implicit def showSource: Show[Source] = Show.fromToString
+}
+
+sealed trait ProjectDep
+object ProjectDep {
+  case class ModuleIdDep(moduleID: ModuleID) extends ProjectDep
+  case class StringDep(dep: String) extends ProjectDep
+  case class BazelDep(path: String, name: String) extends ProjectDep
+
+  def render(dep: ProjectDep): String = {
+    dep match {
+      case ProjectDep.ModuleIdDep(module) => s"//external:${normalizeBindName(module)}"
+      case ProjectDep.StringDep(dep) => dep
+      case ProjectDep.BazelDep(path, target) => s"$path:$target"
+    }
+  }
 }
 
 final class ExprOps[V](val x: Expr[V]) extends AnyVal {
@@ -65,7 +86,7 @@ private[bazel] sealed trait ExprFInstances {
 
 sealed trait BazelDslF[+A]
 object BazelDslF {
-  case class YoloString[A](str: String, next: A) extends BazelDslF[A]
+  case class BazelString[A](str: String, next: A) extends BazelDslF[A]
   case class WorkspacePrelude[A](next: A) extends BazelDslF[A]
   case class MavenBindings[A](next: A) extends BazelDslF[A]
   case class BuildPrelude[A](next: A) extends BazelDslF[A]
@@ -82,7 +103,7 @@ object BazelDsl {
   import BazelDslF._
 
   def appendAlgebra(next: BazelDsl): BazelDslF[BazelDsl] => BazelDsl = {
-    case YoloString(s, n)       => Mu.embed(YoloString(s, n))
+    case BazelString(s, n)      => Mu.embed(BazelString(s, n))
     case WorkspacePrelude(n)    => Mu.embed(WorkspacePrelude(n))
     case MavenBindings(n)       => Mu.embed(MavenBindings(n))
     case BuildPrelude(n)        => Mu.embed(BuildPrelude(n))
@@ -95,7 +116,7 @@ object BazelDsl {
     buildTargets: List[PyExpr],
     bazelVersion: String
   ): BazelDslF[Vector[BazelAst.PyExpr]] => Vector[BazelAst.PyExpr] = {
-    case YoloString(s, n)       => n :+ BazelAst.PyYoloString(s)
+    case BazelString(s, n)      => n :+ BazelAst.PyRawString(s)
     case WorkspacePrelude(n)    => n ++ BazelAst.Helpers.workspacePrelude(bazelVersion)
     case MavenBindings(n)       => n ++ mvnBindings
     case BuildPrelude(n)        => n ++ BazelAst.Helpers.buildPrelude

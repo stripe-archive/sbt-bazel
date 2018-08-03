@@ -23,12 +23,12 @@ object `package` {
 
   implicit val functorBazelDslF: Functor[BazelDslF] = new Functor[BazelDslF] {
     override def map[A, B](fa: BazelDslF[A])(f: A => B): BazelDslF[B] = fa match {
-      case YoloString(s, n) => YoloString(s, f(n))
+      case BazelString(s, n)   => BazelString(s, f(n))
       case WorkspacePrelude(n) => WorkspacePrelude(f(n))
-      case MavenBindings(n) => MavenBindings(f(n))
-      case BuildPrelude(n) => BuildPrelude(f(n))
-      case BuildTargets(n) => BuildTargets(f(n))
-      case Empty => Empty
+      case MavenBindings(n)    => MavenBindings(f(n))
+      case BuildPrelude(n)     => BuildPrelude(f(n))
+      case BuildTargets(n)     => BuildTargets(f(n))
+      case Empty               => Empty
     }
   }
 }

@@ -6,21 +6,15 @@ load(
   'scala_test'
 )
 scala_library(
-  name = 'root',
-  deps = [],
+  name = 'C',
+  deps = [
+    '//B1:B1',
+    '//B2:B2',
+  ],
   runtime_deps = [],
   exports = [],
   visibility = [
     '//visibility:public',
   ],
-  srcs = [
-    'src/main/scala/trivial.scala',
-  ]
-)
-scala_binary(
-  name = 'root-bin',
-  deps = [
-    ':root',
-  ],
-  main_class = 'Trivial'
+  srcs = []
 )
