@@ -86,7 +86,7 @@ private[bazel] sealed trait ExprFInstances {
 
 sealed trait BazelDslF[+A]
 object BazelDslF {
-  case class YoloString[A](str: String, next: A) extends BazelDslF[A]
+  case class BazelString[A](str: String, next: A) extends BazelDslF[A]
   case class WorkspacePrelude[A](next: A) extends BazelDslF[A]
   case class MavenBindings[A](next: A) extends BazelDslF[A]
   case class BuildPrelude[A](next: A) extends BazelDslF[A]
@@ -103,7 +103,7 @@ object BazelDsl {
   import BazelDslF._
 
   def appendAlgebra(next: BazelDsl): BazelDslF[BazelDsl] => BazelDsl = {
-    case YoloString(s, n)       => Mu.embed(YoloString(s, n))
+    case BazelString(s, n)      => Mu.embed(BazelString(s, n))
     case WorkspacePrelude(n)    => Mu.embed(WorkspacePrelude(n))
     case MavenBindings(n)       => Mu.embed(MavenBindings(n))
     case BuildPrelude(n)        => Mu.embed(BuildPrelude(n))
@@ -116,7 +116,7 @@ object BazelDsl {
     buildTargets: List[PyExpr],
     bazelVersion: String
   ): BazelDslF[Vector[BazelAst.PyExpr]] => Vector[BazelAst.PyExpr] = {
-    case YoloString(s, n)       => n :+ BazelAst.PyYoloString(s)
+    case BazelString(s, n)      => n :+ BazelAst.PyRawString(s)
     case WorkspacePrelude(n)    => n ++ BazelAst.Helpers.workspacePrelude(bazelVersion)
     case MavenBindings(n)       => n ++ mvnBindings
     case BuildPrelude(n)        => n ++ BazelAst.Helpers.buildPrelude

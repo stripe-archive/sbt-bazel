@@ -36,7 +36,7 @@ object SbtBazelPlugin extends AutoPlugin {
     val BazelEmpty: BazelDsl = Mu.embed[BazelDslF](BazelDslF.Empty)
     val MavenBindings: BazelDsl = Mu.embed(BazelDslF.MavenBindings(BazelEmpty))
     val WorkspacePrelude: BazelDsl = Mu.embed(BazelDslF.WorkspacePrelude(BazelEmpty))
-    def BazelString(str: String): BazelDsl = Mu.embed(BazelDslF.YoloString(str, BazelEmpty))
+    def BazelString(str: String): BazelDsl = Mu.embed(BazelDslF.BazelString(str, BazelEmpty))
     val BuildPrelude: BazelDsl = Mu.embed(BazelDslF.BuildPrelude(BazelEmpty))
     def BuildTargets: BazelDsl = Mu.embed(BazelDslF.BuildTargets(BazelEmpty))
   }
