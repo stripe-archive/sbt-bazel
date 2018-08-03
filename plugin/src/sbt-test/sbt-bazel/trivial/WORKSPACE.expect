@@ -20,15 +20,3 @@ load(
   '@io_bazel_rules_scala//scala:scala_maven_import_external.bzl',
   'scala_maven_import_external'
 )
-scala_maven_import_external(
-  name = 'org_scala_lang_scala_library_2_12_4',
-  artifact = 'org.scala-lang:scala-library:2.12.4',
-  licenses = [],
-  server_urls = [
-    'https://repo1.maven.org/maven2/',
-  ]
-)
-bind(
-  name = 'jar/org/scala/lang/scala_library_2_12_4',
-  actual = '@org_scala_lang_scala_library_2_12_4//jar'
-)

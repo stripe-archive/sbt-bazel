@@ -8,7 +8,7 @@ load(
 scala_library(
   name = 'B1',
   deps = [
-    'A:A',
+    '//A:A',
   ],
   runtime_deps = [],
   exports = [],

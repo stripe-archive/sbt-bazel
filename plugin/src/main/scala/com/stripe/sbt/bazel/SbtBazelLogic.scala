@@ -93,6 +93,7 @@ private[bazel] sealed trait ZincLogic {
   }
 
   def scalaClasspath(config: Configuration): Def.Initialize[Task[Seq[ProjectDep]]] = Def.task {
+    //TODO: This isn't picking up scala-reflect or scala-xml.
     val moduleID = Classpaths.autoLibraryDependency(
       Keys.autoScalaLibrary.value && Keys.scalaHome.value.isEmpty && Keys.managedScalaInstance.value,
       Keys.sbtPlugin.value,
@@ -147,7 +148,7 @@ private[bazel] sealed trait ZincLogic {
           val basePath = (Keys.baseDirectory in ThisBuild).value.getAbsolutePath
           val projectBasePath = dir.getAbsolutePath
           val rel = relativize(basePath, projectBasePath).stripSuffix("/")
-          ProjectDep.BazelDep(rel, dep.project.project)
+          ProjectDep.BazelDep(s"//$rel", dep.project.project)
         }
       }.toList
 

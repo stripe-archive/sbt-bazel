@@ -21,7 +21,7 @@ load(
   'scala_maven_import_external'
 )
 scala_maven_import_external(
-  name = 'com_chuusai_shapeless_2_12_2_3_3',
+  name = 'com_chuusai_shapeless_2_12',
   artifact = 'com.chuusai:shapeless_2.12:2.3.3',
   licenses = [],
   server_urls = [
@@ -29,11 +29,11 @@ scala_maven_import_external(
   ]
 )
 bind(
-  name = 'jar/com/chuusai/shapeless_2_12_2_3_3',
-  actual = '@com_chuusai_shapeless_2_12_2_3_3//jar'
+  name = 'jar/com/chuusai/shapeless_2_12',
+  actual = '@com_chuusai_shapeless_2_12//jar'
 )
 scala_maven_import_external(
-  name = 'io_circe_circe_core_2_12_0_9_3',
+  name = 'io_circe_circe_core_2_12',
   artifact = 'io.circe:circe-core_2.12:0.9.3',
   licenses = [],
   server_urls = [
@@ -41,11 +41,11 @@ scala_maven_import_external(
   ]
 )
 bind(
-  name = 'jar/io/circe/circe_core_2_12_0_9_3',
-  actual = '@io_circe_circe_core_2_12_0_9_3//jar'
+  name = 'jar/io/circe/circe_core_2_12',
+  actual = '@io_circe_circe_core_2_12//jar'
 )
 scala_maven_import_external(
-  name = 'io_circe_circe_generic_2_12_0_9_3',
+  name = 'io_circe_circe_generic_2_12',
   artifact = 'io.circe:circe-generic_2.12:0.9.3',
   licenses = [],
   server_urls = [
@@ -53,11 +53,11 @@ scala_maven_import_external(
   ]
 )
 bind(
-  name = 'jar/io/circe/circe_generic_2_12_0_9_3',
-  actual = '@io_circe_circe_generic_2_12_0_9_3//jar'
+  name = 'jar/io/circe/circe_generic_2_12',
+  actual = '@io_circe_circe_generic_2_12//jar'
 )
 scala_maven_import_external(
-  name = 'io_circe_circe_jawn_2_12_0_9_3',
+  name = 'io_circe_circe_jawn_2_12',
   artifact = 'io.circe:circe-jawn_2.12:0.9.3',
   licenses = [],
   server_urls = [
@@ -65,11 +65,11 @@ scala_maven_import_external(
   ]
 )
 bind(
-  name = 'jar/io/circe/circe_jawn_2_12_0_9_3',
-  actual = '@io_circe_circe_jawn_2_12_0_9_3//jar'
+  name = 'jar/io/circe/circe_jawn_2_12',
+  actual = '@io_circe_circe_jawn_2_12//jar'
 )
 scala_maven_import_external(
-  name = 'io_circe_circe_numbers_2_12_0_9_3',
+  name = 'io_circe_circe_numbers_2_12',
   artifact = 'io.circe:circe-numbers_2.12:0.9.3',
   licenses = [],
   server_urls = [
@@ -77,11 +77,11 @@ scala_maven_import_external(
   ]
 )
 bind(
-  name = 'jar/io/circe/circe_numbers_2_12_0_9_3',
-  actual = '@io_circe_circe_numbers_2_12_0_9_3//jar'
+  name = 'jar/io/circe/circe_numbers_2_12',
+  actual = '@io_circe_circe_numbers_2_12//jar'
 )
 scala_maven_import_external(
-  name = 'io_circe_circe_parser_2_12_0_9_3',
+  name = 'io_circe_circe_parser_2_12',
   artifact = 'io.circe:circe-parser_2.12:0.9.3',
   licenses = [],
   server_urls = [
@@ -89,23 +89,11 @@ scala_maven_import_external(
   ]
 )
 bind(
-  name = 'jar/io/circe/circe_parser_2_12_0_9_3',
-  actual = '@io_circe_circe_parser_2_12_0_9_3//jar'
+  name = 'jar/io/circe/circe_parser_2_12',
+  actual = '@io_circe_circe_parser_2_12//jar'
 )
 scala_maven_import_external(
-  name = 'org_scala_lang_scala_library_2_12_4',
-  artifact = 'org.scala-lang:scala-library:2.12.4',
-  licenses = [],
-  server_urls = [
-    'https://repo1.maven.org/maven2/',
-  ]
-)
-bind(
-  name = 'jar/org/scala/lang/scala_library_2_12_4',
-  actual = '@org_scala_lang_scala_library_2_12_4//jar'
-)
-scala_maven_import_external(
-  name = 'org_scala_lang_scala_reflect_2_12_4',
+  name = 'org_scala_lang_scala_reflect',
   artifact = 'org.scala-lang:scala-reflect:2.12.4',
   licenses = [],
   server_urls = [
@@ -113,11 +101,11 @@ scala_maven_import_external(
   ]
 )
 bind(
-  name = 'jar/org/scala/lang/scala_reflect_2_12_4',
-  actual = '@org_scala_lang_scala_reflect_2_12_4//jar'
+  name = 'jar/org/scala/lang/scala_reflect',
+  actual = '@org_scala_lang_scala_reflect//jar'
 )
 scala_maven_import_external(
-  name = 'org_spire_math_jawn_parser_2_12_0_11_1',
+  name = 'org_spire_math_jawn_parser_2_12',
   artifact = 'org.spire-math:jawn-parser_2.12:0.11.1',
   licenses = [],
   server_urls = [
@@ -125,11 +113,11 @@ scala_maven_import_external(
   ]
 )
 bind(
-  name = 'jar/org/spire/math/jawn_parser_2_12_0_11_1',
-  actual = '@org_spire_math_jawn_parser_2_12_0_11_1//jar'
+  name = 'jar/org/spire/math/jawn_parser_2_12',
+  actual = '@org_spire_math_jawn_parser_2_12//jar'
 )
 scala_maven_import_external(
-  name = 'org_typelevel_cats_core_2_12_1_0_1',
+  name = 'org_typelevel_cats_core_2_12',
   artifact = 'org.typelevel:cats-core_2.12:1.0.1',
   licenses = [],
   server_urls = [
@@ -137,11 +125,11 @@ scala_maven_import_external(
   ]
 )
 bind(
-  name = 'jar/org/typelevel/cats_core_2_12_1_0_1',
-  actual = '@org_typelevel_cats_core_2_12_1_0_1//jar'
+  name = 'jar/org/typelevel/cats_core_2_12',
+  actual = '@org_typelevel_cats_core_2_12//jar'
 )
 scala_maven_import_external(
-  name = 'org_typelevel_cats_kernel_2_12_1_0_1',
+  name = 'org_typelevel_cats_kernel_2_12',
   artifact = 'org.typelevel:cats-kernel_2.12:1.0.1',
   licenses = [],
   server_urls = [
@@ -149,11 +137,11 @@ scala_maven_import_external(
   ]
 )
 bind(
-  name = 'jar/org/typelevel/cats_kernel_2_12_1_0_1',
-  actual = '@org_typelevel_cats_kernel_2_12_1_0_1//jar'
+  name = 'jar/org/typelevel/cats_kernel_2_12',
+  actual = '@org_typelevel_cats_kernel_2_12//jar'
 )
 scala_maven_import_external(
-  name = 'org_typelevel_cats_macros_2_12_1_0_1',
+  name = 'org_typelevel_cats_macros_2_12',
   artifact = 'org.typelevel:cats-macros_2.12:1.0.1',
   licenses = [],
   server_urls = [
@@ -161,11 +149,11 @@ scala_maven_import_external(
   ]
 )
 bind(
-  name = 'jar/org/typelevel/cats_macros_2_12_1_0_1',
-  actual = '@org_typelevel_cats_macros_2_12_1_0_1//jar'
+  name = 'jar/org/typelevel/cats_macros_2_12',
+  actual = '@org_typelevel_cats_macros_2_12//jar'
 )
 scala_maven_import_external(
-  name = 'org_typelevel_machinist_2_12_0_6_2',
+  name = 'org_typelevel_machinist_2_12',
   artifact = 'org.typelevel:machinist_2.12:0.6.2',
   licenses = [],
   server_urls = [
@@ -173,11 +161,11 @@ scala_maven_import_external(
   ]
 )
 bind(
-  name = 'jar/org/typelevel/machinist_2_12_0_6_2',
-  actual = '@org_typelevel_machinist_2_12_0_6_2//jar'
+  name = 'jar/org/typelevel/machinist_2_12',
+  actual = '@org_typelevel_machinist_2_12//jar'
 )
 scala_maven_import_external(
-  name = 'org_typelevel_macro_compat_2_12_1_1_1',
+  name = 'org_typelevel_macro_compat_2_12',
   artifact = 'org.typelevel:macro-compat_2.12:1.1.1',
   licenses = [],
   server_urls = [
@@ -185,6 +173,6 @@ scala_maven_import_external(
   ]
 )
 bind(
-  name = 'jar/org/typelevel/macro_compat_2_12_1_1_1',
-  actual = '@org_typelevel_macro_compat_2_12_1_1_1//jar'
+  name = 'jar/org/typelevel/macro_compat_2_12',
+  actual = '@org_typelevel_macro_compat_2_12//jar'
 )

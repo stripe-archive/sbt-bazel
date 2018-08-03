@@ -68,7 +68,7 @@ object SbtBazelPlugin extends AutoPlugin {
       SbtBazelKeys.bazelRuleDeps          := Deps(Compile) - ScalaLib(Compile),
       SbtBazelKeys.bazelRuleRuntimeDeps   := EmptyDep,
       SbtBazelKeys.bazelRuleExports       := EmptyDep,
-      SbtBazelKeys.bazelMavenDeps         := AllExternalDeps(Compile),
+      SbtBazelKeys.bazelMavenDeps         := AllExternalDeps(Compile) - ScalaLib(Compile),
       SbtBazelKeys.bazelCustomWorkspace   := WorkspacePrelude +: MavenBindings,
       SbtBazelKeys.bazelCustomBuild       := BuildPrelude +: BuildTargets
     ) ++
@@ -135,10 +135,10 @@ object SbtBazel {
   }
 
   def normalizeJarName(module: ModuleID): String =
-    s"${replaceWithUnderscore(module.organization)}_${replaceWithUnderscore(module.name)}_${replaceWithUnderscore(module.revision)}"
+    s"${replaceWithUnderscore(module.organization)}_${replaceWithUnderscore(module.name)}"
 
   def normalizeBindName(module: ModuleID): String =
-    s"jar/${replaceWithSlash(module.organization)}/${replaceWithUnderscore(module.name)}_${replaceWithUnderscore(module.revision)}"
+    s"jar/${replaceWithSlash(module.organization)}/${replaceWithUnderscore(module.name)}"
 
   def mavenJar(moduleId: ModuleID, repo: List[String], scalaVersion: String): List[PyExpr] = {
 
