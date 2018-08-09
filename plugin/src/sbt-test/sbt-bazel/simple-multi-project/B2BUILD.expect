@@ -9,6 +9,7 @@ scala_library(
   name = 'B2',
   deps = [
     '//A:A',
+    '//external:jar/org/scala/lang/scala_library',
   ],
   runtime_deps = [],
   exports = [],

@@ -65,10 +65,10 @@ object SbtBazelPlugin extends AutoPlugin {
       SbtBazelKeys.bazelGenerate          := SbtBazel.bazelGenerateMain.value,
       SbtBazelKeys.bazelBuildGenerate     := true,
       SbtBazelKeys.bazelWorkspaceGenerate := false,
-      SbtBazelKeys.bazelRuleDeps          := Deps(Compile) - ScalaLib(Compile),
+      SbtBazelKeys.bazelRuleDeps          := Deps(Compile),
       SbtBazelKeys.bazelRuleRuntimeDeps   := EmptyDep,
       SbtBazelKeys.bazelRuleExports       := EmptyDep,
-      SbtBazelKeys.bazelMavenDeps         := AllExternalDeps(Compile) - ScalaLib(Compile),
+      SbtBazelKeys.bazelMavenDeps         := AllExternalDeps(Compile),
       SbtBazelKeys.bazelCustomWorkspace   := WorkspacePrelude +: MavenBindings,
       SbtBazelKeys.bazelCustomBuild       := BuildPrelude +: BuildTargets
     ) ++
