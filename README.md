@@ -118,4 +118,9 @@ The plugin has the following limitations:
 
 # Contributing
 
-TODO: Update once the repo has a license.
+Contributions are welcome. If you have a large contribution in mind, please open an issue to discuss the change first.
+
+# Authors
+
+- [Andy Scott](https://twitter.com/andygscott)
+- [Alex Beal](https://twitter.com/beala)
