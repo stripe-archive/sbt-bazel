@@ -1,0 +1,5 @@
+> bazelGenerate
+#$ must-mirror core/BUILD core-BUILD.expect
+#$ must-mirror example/BUILD example-BUILD.expect
+#$ must-mirror WORKSPACE WORKSPACE.expect
+$ exec bazel run //example:example-bin
