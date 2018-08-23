@@ -2,12 +2,53 @@ import sbt.ScriptedPlugin.{autoImport => ScriptedKeys}
 
 lazy val root = (project in file("."))
   .aggregate(plugin)
+  .settings(commonSettings)
+  .settings(unpublished)
 
 lazy val commonSettings = Seq(
   organization := "com.stripe",
   scalaVersion := "2.12.4",
-  version      := "0.0.1-SNAPSHOT"
+  releasePublishArtifactsAction := PgpKeys.publishSigned.value,
+  useGpg := true,
+  pomIncludeRepository := { _ => false },
+  publishMavenStyle := true,
+
+  licenses := Seq("Apache 2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
+
+  homepage := Some(url("https://github.com/stripe/sbt-bazel")),
+
+  scmInfo := Some(
+    ScmInfo(
+      url("https://github.com/stripe/sbt-bazel"),
+      "scm:git@github.com:stripe/sbt-bazel.git"
+    )
+  ),
+
+  developers := List(
+    Developer(
+      "beala-stripe",
+      "Alex Beal",
+      "beala@stripe.com",
+      url("https://twitter.com/beala")
+    ),
+    Developer(
+      "andyscott",
+      "Andy Scott",
+      "andyscott@stripe.com",
+      url("https://twitter.com/andygscott")
+    )
+  ),
+
+  publishTo := {
+    val nexus = "https://oss.sonatype.org/"
+    if (isSnapshot.value)
+      Some("snapshots" at nexus + "content/repositories/snapshots")
+    else
+      Some("releases"  at nexus + "service/local/staging/deploy/maven2")
+  }
 )
+
+lazy val unpublished = Seq(publish := {}, publishLocal := {}, publishArtifact := false)
 
 lazy val plugin = project
   .in(file("plugin"))
