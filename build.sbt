@@ -28,6 +28,7 @@ lazy val plugin = project
     deps.scalacheck % Test
   ))
   .settings(
+    releasePublishArtifactsAction := PgpKeys.publishSigned.value,
     useGpg := true,
     pomIncludeRepository := { _ => false },
     publishMavenStyle := true,
