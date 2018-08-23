@@ -6,7 +6,7 @@ lazy val root = (project in file("."))
 lazy val commonSettings = Seq(
   organization := "com.stripe",
   scalaVersion := "2.12.4",
-  version      := "0.0.1-SNAPSHOT"
+  version      := "0.0.1"
 )
 
 lazy val plugin = project
@@ -27,6 +27,45 @@ lazy val plugin = project
     deps.paiges,
     deps.scalacheck % Test
   ))
+  .settings(
+    useGpg := true,
+    pomIncludeRepository := { _ => false },
+    publishMavenStyle := true,
+
+    licenses := Seq("Apache 2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
+
+    homepage := Some(url("https://github.com/stripe/sbt-bazel")),
+
+    scmInfo := Some(
+      ScmInfo(
+        url("https://github.com/stripe/sbt-bazel"),
+        "scm:git@github.com:stripe/sbt-bazel.git"
+      )
+    ),
+
+    developers := List(
+      Developer(
+        "beala-stripe",
+        "Alex Beal",
+        "beala@stripe.com",
+        url("https://twitter.com/beala")
+      ),
+      Developer(
+        "andyscott",
+        "Andy Scott",
+        "andyscott@stripe.com",
+        url("https://twitter.com/andygscott")
+      )
+    ),
+
+    publishTo := {
+      val nexus = "https://oss.sonatype.org/"
+      if (isSnapshot.value)
+        Some("snapshots" at nexus + "content/repositories/snapshots")
+      else
+        Some("releases"  at nexus + "service/local/staging/deploy/maven2")
+    }
+  )
 
 lazy val deps = new {
   val cats = "org.typelevel" %% "cats-core" % "1.1.0"
