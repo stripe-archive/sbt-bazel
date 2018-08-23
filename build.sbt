@@ -2,6 +2,15 @@ import sbt.ScriptedPlugin.{autoImport => ScriptedKeys}
 
 lazy val root = (project in file("."))
   .aggregate(plugin)
+  .settings(
+    publishTo := {
+      val nexus = "https://oss.sonatype.org/"
+      if (isSnapshot.value)
+        Some("snapshots" at nexus + "content/repositories/snapshots")
+      else
+        Some("releases"  at nexus + "service/local/staging/deploy/maven2")
+    }
+  )
 
 lazy val commonSettings = Seq(
   organization := "com.stripe",
