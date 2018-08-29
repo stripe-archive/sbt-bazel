@@ -12,19 +12,10 @@ This plugin will generate BUILD files for each project along with a WORKSPACE fi
 
 The [`readme-example`](https://github.com/stripe/sbt-bazel/tree/master/plugin/src/sbt-test/sbt-bazel/readme-example) project in the plugin's test directory is a minimal usage example. This section will walk through the settings used.
 
-(TODO: Update this once the plugin artifact is published.)
-
-First you must install the plugin in your project. Currently it can be used as a source dependency by first cloning the repo:
-
-```
-git clone git@github.com:stripe/sbt-bazel.git
-```
-
-Then add the following to your project's `project/plugins.sbt`, setting the correct path to `sbt-bazel`:
+First you must install the plugin in your project. Do this by adding the following to your project's `project/plugins.sbt`:
 
 ```scala
-lazy val plugin = ProjectRef(uri("path/to/sbt-bazel"), "plugin")
-lazy val root = (project in file(".")).dependsOn(plugin)
+addSbtPlugin("com.stripe" %% "sbt-bazel" % "0.0.1")
 ```
 
 In your project's [`build.sbt`](https://github.com/stripe/sbt-bazel/tree/master/plugin/src/sbt-test/sbt-bazel/readme-example/build.sbt) file, you must now set the version of `rules_scala`. This is done by setting `bazelScalaRulesVersion` to the SHA of the `rules_scala` commit you'd like to use. For example, to set the version to [0eab80ff0696d419aa54c2ab4b847ce9bdcbb379](https://github.com/bazelbuild/rules_scala/commit/0eab80ff0696d419aa54c2ab4b847ce9bdcbb379) add the following to the top of your build file:
