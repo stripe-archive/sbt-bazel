@@ -114,10 +114,14 @@ object BazelDsl {
   def pyExprAlgebra(
     mvnBindings: List[PyExpr],
     buildTargets: List[PyExpr],
-    bazelVersion: String
+    bazelVersion: String,
+    bazelProtobufVersion: Option[(String, String)],
+    bazelSkylibVersion: Option[(String, String)]
   ): BazelDslF[Vector[BazelAst.PyExpr]] => Vector[BazelAst.PyExpr] = {
     case BazelString(s, n)      => n :+ BazelAst.PyRawString(s)
-    case WorkspacePrelude(n)    => n ++ BazelAst.Helpers.workspacePrelude(bazelVersion)
+    case WorkspacePrelude(n)    => n ++ BazelAst.Helpers.workspacePrelude(
+      bazelVersion, bazelProtobufVersion, bazelSkylibVersion
+    )
     case MavenBindings(n)       => n ++ mvnBindings
     case BuildPrelude(n)        => n ++ BazelAst.Helpers.buildPrelude
     case BuildTargets(n)        => n ++ buildTargets

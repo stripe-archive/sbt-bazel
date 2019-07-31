@@ -18,12 +18,6 @@ First you must install the plugin in your project. Do this by adding the followi
 addSbtPlugin("com.stripe" %% "sbt-bazel" % "0.0.1")
 ```
 
-In your project's [`build.sbt`](https://github.com/stripe/sbt-bazel/tree/master/plugin/src/sbt-test/sbt-bazel/readme-example/build.sbt) file, you must now set the version of `rules_scala`. This is done by setting `bazelScalaRulesVersion` to the SHA of the `rules_scala` commit you'd like to use. For example, to set the version to [0eab80ff0696d419aa54c2ab4b847ce9bdcbb379](https://github.com/bazelbuild/rules_scala/commit/0eab80ff0696d419aa54c2ab4b847ce9bdcbb379) add the following to the top of your build file:
-
-```scala
-ThisBuild / bazelScalaRulesVersion := "0eab80ff0696d419aa54c2ab4b847ce9bdcbb379"
-```
-
 A common sbt pattern is to set up a root project that does not contain any source files itself, but is instead an aggregation all of a repo's sub-projects. This is the pattern the example project follows.
 
 In order to generate one `WORKSPACE` file, enable workspace file generation with `bazelWorkspaceGenerate` for the root project. Because the root project is just an empty aggregation, it also makes sense to turn off `BUILD` file generation with `bazelBuildGenerate`. Putting all this together, the root target will look as follows:
@@ -45,6 +39,12 @@ See the `*.expect` files for examples of what the generated files will look like
 # Overriding Behavior
 
 For more complicated projects, you may need to customize the behavior of the plugin. Several settings are available to you.
+
+## Changing library versions
+
+- `bazelScalaRulesVersion`: Sets the git SHA of the `rules_scala` commit you'd like to use. For example, to set the version to [0eab80ff0696d419aa54c2ab4b847ce9bdcbb379](https://github.com/bazelbuild/rules_scala/commit/0eab80ff0696d419aa54c2ab4b847ce9bdcbb379), `ThisBuild / bazelScalaRulesVersion := "0eab80ff0696d419aa54c2ab4b847ce9bdcbb379"`.
+- `bazelProtobufVersion`: Sets the git SHA of the protobuf library version you'd like to use and SHA256 of the corresponding artifact. When set to `None`, `WorkspacePrelude` will not load protobuf. For example, `ThisBuild / bazelProtobufVersion = Some(("09745575a923640154bcf307fba8aedff47f240a", "416212e14481cff8fd4849b1c1c1200a7f34808a54377e22d7447efdf54ad758"))`.
+- `bazelSkylibVersion`: Sets the release version of bazel_skylib you'd like to use and the SHA256 of the corresponding artifact. When set to `None`, `WorkspacePrelude` will not load bazel_skylib. For example, `ThisBuild / bazelSkylibVersion = Some(("0.8.0", "2ef429f5d7ce7111263289644d233707dba35e39696377ebab8b0bc701f7818e"))`.
 
 ## Toggling File Generation
 
