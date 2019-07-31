@@ -4,7 +4,7 @@
 
 **This plugin is considered experimental. Expect frequent breaking changes.**
 
-sbt-bazel is an sbt plugin that converts sbt projects to Bazel workspaces. This readme assumes you have basic knowledge of how a Bazel workspace is organized. 
+sbt-bazel is an sbt plugin that converts sbt projects to Bazel workspaces. This readme assumes you have basic knowledge of how a Bazel workspace is organized.
 
 This plugin will generate BUILD files for each project along with a WORKSPACE files that handles importing [rules_scala](https://github.com/bazelbuild/rules_scala) and downloading binary artifacts from Maven repos.
 
@@ -24,7 +24,7 @@ In your project's [`build.sbt`](https://github.com/stripe/sbt-bazel/tree/master/
 ThisBuild / bazelScalaRulesVersion := "0eab80ff0696d419aa54c2ab4b847ce9bdcbb379"
 ```
 
-A common sbt pattern is to set up a root project that does not contain any source files itself, but is instead an aggregation all of a repo's sub-projects. This is the pattern the example project follows. 
+A common sbt pattern is to set up a root project that does not contain any source files itself, but is instead an aggregation all of a repo's sub-projects. This is the pattern the example project follows.
 
 In order to generate one `WORKSPACE` file, enable workspace file generation with `bazelWorkspaceGenerate` for the root project. Because the root project is just an empty aggregation, it also makes sense to turn off `BUILD` file generation with `bazelBuildGenerate`. Putting all this together, the root target will look as follows:
 
@@ -57,14 +57,14 @@ For more complicated projects, you may need to customize the behavior of the plu
   - A `WorkspacePrelude`, which contains the code to load and set up `rules_scala`
   - And a `MavenBindings` section, which contains code to load and bind any dependency artifacts.
 
-So the default setting is: `bazelCustomWorkspace := WorkspacePrelude +: MavenBindings`, where the `+:` operator concatenates sections together. 
+So the default setting is: `bazelCustomWorkspace := WorkspacePrelude +: MavenBindings`, where the `+:` operator concatenates sections together.
 
 The `BazelString` operand allows you add arbitrary text to the `WORKSPACE` file. The following would completely replace the generated `WORKSPACE` contents with the string passed to `BazelString`: `bazelCustomWorkspace := BazelString("# Custom workspace file")`
 
 - `bazelCustomBuild`: This allows customizing how the `BUILD` file is generated using a DSL. By default, the `WORKSPACE` file is made up of two sections:
   - A `BuildPrelude`, which contains the code to load rules from `rules_scala`
   - And a `BuildTargets` section, which contains the generated `scala_library` target and `scala_binary` target, if applicable.
-  
+
 The `+:` operator concatenates sections and `BazelString` allows you to specify arbitrary strings.
 
 ## Customizing Dependency Generation
@@ -84,8 +84,8 @@ The operands are:
 Putting this together, the following would remove the `circe-parser` 0.9.2 dependency and substitute it for version 0.9.3:
 
 ```scala
-bazelRuleDeps := Deps(Compile) - 
-  ModuleDep("io.circe" %% "circe-parser" % "0.9.2") + 
+bazelRuleDeps := Deps(Compile) -
+  ModuleDep("io.circe" %% "circe-parser" % "0.9.2") +
   ModuleDep("io.circe" %% "circe-parser" % "0.9.3")
 ```
 
@@ -104,12 +104,17 @@ The operators and operands in the [Customizing Dependency Generation](#customizi
 The plugin has the following limitations:
 
 - All dependencies in the `Keys.externalDependencyClasspath` are added as compile time dependencies, even if they are only needed at runtime.
-- Any additional resolvers added to the `Resolver` setting are used as mirrors in the `WORKSPACE` file for *all* dependencies. 
+- Any additional resolvers added to the `Resolver` setting are used as mirrors in the `WORKSPACE` file for *all* dependencies.
 - Only Maven resolvers are supported.
 
 # Contributing
 
 Contributions are welcome. If you have a large contribution in mind, please open an issue to discuss the change first.
+
+To update the test expectations:
+* Change the version in [`version.sbt`](https://github.com/stripe/sbt-bazel/tree/master/version.sbt) to end in `-SNAPSHOT`.
+* Install [nix](https://nixos.org/nix/).
+* Run `scripts/update_test_output.sh` from the project root.
 
 # Authors
 
