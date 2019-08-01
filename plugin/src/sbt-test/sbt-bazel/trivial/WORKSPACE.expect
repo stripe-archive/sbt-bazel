@@ -24,17 +24,20 @@ load(
   '@io_bazel_rules_scala//scala:scala_maven_import_external.bzl',
   'scala_maven_import_external'
 )
+protobuf_version = '09745575a923640154bcf307fba8aedff47f240a'
+protobuf_version_sha256 = '416212e14481cff8fd4849b1c1c1200a7f34808a54377e22d7447efdf54ad758'
 http_archive(
   name = 'com_google_protobuf',
-  url = 'https://github.com/protocolbuffers/protobuf/archive/%s.tar.gz' % '09745575a923640154bcf307fba8aedff47f240a',
+  url = 'https://github.com/protocolbuffers/protobuf/archive/%s.tar.gz' % protobuf_version,
   type = 'tar.gz',
-  sha256 = '416212e14481cff8fd4849b1c1c1200a7f34808a54377e22d7447efdf54ad758'
+  sha256 = protobuf_version_sha256
 )
+skylib_version = '0.8.0'
 http_archive(
   name = 'bazel_skylib',
   url = 'https://github.com/bazelbuild/bazel-skylib/releases/download/{}/bazel-skylib.{}.tar.gz'.format(
-    '0.8.0',
-    '0.8.0'
+    skylib_version,
+    skylib_version
   ),
   type = 'tar.gz',
   sha256 = '2ef429f5d7ce7111263289644d233707dba35e39696377ebab8b0bc701f7818e'

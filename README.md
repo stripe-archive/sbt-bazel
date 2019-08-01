@@ -111,10 +111,18 @@ The plugin has the following limitations:
 
 Contributions are welcome. If you have a large contribution in mind, please open an issue to discuss the change first.
 
+## Tests
+To run tests: `nix-shell --packages gcc --command 'sbt ";test;scripted"'`
+
 To update the test expectations:
 * Change the version in [`version.sbt`](https://github.com/stripe/sbt-bazel/tree/master/version.sbt) to end in `-SNAPSHOT`.
 * Install [nix](https://nixos.org/nix/).
 * Run `scripts/update_test_output.sh` from the project root.
+
+To update the version of Bazel used by the tests:
+* Ensure that the version you want [is available](https://github.com/andyscott/bazel-nix/blob/master/bazel-release-hashes.nix) and add it if necessary.
+* If necessary, update the rev and sha256 in [`shell.nix`](https://github.com/stripe/sbt-bazel/tree/master/version.sbt). To find the correct SHA256 run: `nix-prefetch-url --unpack https://github.com/andyscott/bazel-nix/archive/<rev>.tar.gz`.
+* Update the version in [`shell.nix`](https://github.com/stripe/sbt-bazel/tree/master/version.sbt)
 
 # Authors
 

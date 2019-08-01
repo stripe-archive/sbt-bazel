@@ -6,14 +6,14 @@ let
   bazel = (import (fetchFromGitHub {
     owner = "andyscott";
     repo = "bazel-nix";
-    rev = "d03cebdba5aefdccad70608ec348fdd1ca0c1ed1";
-    sha256 = "08znczxmm4ijlw3lfcz8xw3f1368nn56i5ka453gygslj6qfg1g3";
+    rev = "ab5eac78f0b9e49f43e14b4266bc0401f85f4e46";
+    sha256 = "1xn8gld84hrqjdbp7zxqp65ygkrvxjvlhsg6hkj8wd4ma1xl5aqd";
   })) {
-    version = "0.14.1";
+    version = "0.28.1";
   };
 
 in
   stdenv.mkDerivation {
     name = "commands-nix";
-    buildInputs = [ bazel sbt ];
+    buildInputs = [ bazel sbt llvmPackages.stdenv ];
   }
