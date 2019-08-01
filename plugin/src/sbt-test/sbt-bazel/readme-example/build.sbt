@@ -1,3 +1,5 @@
+scalaVersion := "2.12.4"
+
 ThisBuild / bazelScalaRulesVersion := "0eab80ff0696d419aa54c2ab4b847ce9bdcbb379"
 
 lazy val root =  project.

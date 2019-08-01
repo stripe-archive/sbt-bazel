@@ -1,8 +1,8 @@
 > A/bazelGenerate
-$ must-mirror A/BUILD ABUILD.expect
+$ must-mirror A/BUILD A-BUILD.expect
 > B1/bazelGenerate
-$ must-mirror B1/BUILD B1BUILD.expect
+$ must-mirror B1/BUILD B1-BUILD.expect
 > B2/bazelGenerate
-$ must-mirror B2/BUILD B2BUILD.expect
+$ must-mirror B2/BUILD B2-BUILD.expect
 > C/bazelGenerate
-$ must-mirror C/BUILD CBUILD.expect
+$ must-mirror C/BUILD C-BUILD.expect

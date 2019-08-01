@@ -22,7 +22,19 @@ load(
 )
 scala_maven_import_external(
   name = 'org_scala_lang_scala_library',
-  artifact = 'org.scala-lang:scala-library:2.12.6',
+  artifact = 'org.scala-lang:scala-library:2.12.4',
+  licenses = [],
+  server_urls = [
+    'https://repo1.maven.org/maven2/',
+  ]
+)
+bind(
+  name = 'jar/org/scala/lang/scala_library',
+  actual = '@org_scala_lang_scala_library//jar'
+)
+scala_maven_import_external(
+  name = 'org_scala_lang_scala_library',
+  artifact = 'org.scala-lang:scala-library:2.12.7',
   licenses = [],
   server_urls = [
     'https://repo1.maven.org/maven2/',
@@ -34,7 +46,7 @@ bind(
 )
 scala_maven_import_external(
   name = 'org_scala_lang_scala_reflect',
-  artifact = 'org.scala-lang:scala-reflect:2.12.6',
+  artifact = 'org.scala-lang:scala-reflect:2.12.7',
   licenses = [],
   server_urls = [
     'https://repo1.maven.org/maven2/',
