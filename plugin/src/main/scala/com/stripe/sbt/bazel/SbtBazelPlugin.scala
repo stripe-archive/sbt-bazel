@@ -45,6 +45,8 @@ object SbtBazelPlugin extends AutoPlugin {
     def bazelBuildGenerate = SbtBazelKeys.bazelBuildGenerate
     def bazelWorkspaceGenerate = SbtBazelKeys.bazelWorkspaceGenerate
     def bazelScalaRulesVersion = SbtBazelKeys.bazelScalaRulesVersion
+    def bazelProtobufVersion = SbtBazelKeys.bazelProtobufVersion
+    def bazelSkylibVersion = SbtBazelKeys.bazelSkylibVersion
     def bazelCustomWorkspace = SbtBazelKeys.bazelCustomWorkspace
     def bazelCustomBuild = SbtBazelKeys.bazelCustomBuild
     def bazelRuleDeps = SbtBazelKeys.bazelRuleDeps
@@ -58,6 +60,9 @@ object SbtBazelPlugin extends AutoPlugin {
   override def buildSettings: Seq[Def.Setting[_]] =
     Seq(
       SbtBazelKeys.bazelMavenRepo := None,
+      SbtBazelKeys.bazelScalaRulesVersion :=  "acac888c86e79110d1d08ab5578a7d0101c97963",
+      SbtBazelKeys.bazelProtobufVersion   := Some(("09745575a923640154bcf307fba8aedff47f240a", "416212e14481cff8fd4849b1c1c1200a7f34808a54377e22d7447efdf54ad758")),
+      SbtBazelKeys.bazelSkylibVersion     := Some(("0.8.0", "2ef429f5d7ce7111263289644d233707dba35e39696377ebab8b0bc701f7818e"))
     )
 
   override def projectSettings: Seq[Def.Setting[_]] =
@@ -96,6 +101,10 @@ object SbtBazelKeys {
   val bazelWorkspaceGenerate: SettingKey[Boolean]        = settingKey("Generate a WORKSPACE file for this project and child projects.")
   val bazelMavenRepo        : SettingKey[Option[String]] = settingKey("URI of maven repository")
   val bazelScalaRulesVersion: SettingKey[String]         = settingKey("SHA of scala-rules version")
+  val bazelProtobufVersion  : SettingKey[Option[(String, String)]]
+                                                         = settingKey("Tuple of protobuf version number and the SHA256 of the artifact")
+  val bazelSkylibVersion    : SettingKey[Option[(String, String)]]
+                                                         = settingKey("Tuple of bazel_skylib version number and the SHA256 of the artifact")
   val bazelRuleDeps         : SettingKey[Expr[Source]]   = settingKey("Expression used to assign the deps field")
   val bazelRuleRuntimeDeps  : SettingKey[Expr[Source]]   = settingKey("Expression used to assign the runtime_deps field")
   val bazelRuleExports      : SettingKey[Expr[Source]]   = settingKey("Expression used to assign the exports field")
@@ -170,7 +179,9 @@ object SbtBazel {
     val baseDirectory = Keys.baseDirectory.value
     val sources = (Keys.sources in Compile).value
     val mainClass = (Keys.mainClass in Compile).value
-    val bazelScalaRulesVersion = SbtBazelKeys.bazelScalaRulesVersion.value
+    val bazelScalaRulesVersion = SbtBazelKeys.bazelScalaRulesVersion.value // .getOrElse("acac888c86e79110d1d08ab5578a7d0101c97963")
+    val bazelProtobufVersion = SbtBazelKeys.bazelProtobufVersion.value
+    val bazelSkylibVersion = SbtBazelKeys.bazelSkylibVersion.value
     val mavenRepos = (SbtBazelKeys.allMavenResolvers in Compile).value
     val scalaVersion = Keys.scalaVersion.value
 
@@ -224,7 +235,9 @@ object SbtBazel {
         BazelDsl.pyExprAlgebra(
           externalDepsAst,
           List.empty,
-          bazelScalaRulesVersion
+          bazelScalaRulesVersion,
+          bazelProtobufVersion,
+          bazelSkylibVersion
         )
       )
 
@@ -240,7 +253,9 @@ object SbtBazel {
         BazelDsl.pyExprAlgebra(
           List.empty,
           scalaLibrary +: scalaBinary.fold[List[PyExpr]](List())(b => List(b)),
-          bazelScalaRulesVersion
+          bazelScalaRulesVersion,
+          bazelProtobufVersion,
+          bazelSkylibVersion
         )
       )
       val buildDoc = BazelAst.Render.renderPyExprs(buildAst.toList)

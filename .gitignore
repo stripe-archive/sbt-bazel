@@ -24,6 +24,8 @@ checkpoint/
 testData/
 .phantom-temp
 *.iml
+.bloop/
+.metals/
 
 # PGP keys
 secring.asc
